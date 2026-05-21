@@ -1,60 +1,81 @@
-# router.py
+# router.py — full replacement
 from openai import OpenAI
 from config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, GENERATION_MODEL
 
 client = OpenAI(base_url=LM_STUDIO_BASE_URL, api_key=LM_STUDIO_API_KEY)
 
-ROUTER_PROMPT = """You are a query routing classifier.
+# threshold for what counts as "relevant" in the knowledge base
+# cosine similarity ranges 0-1, 0.5 is a reasonable starting point
+VECTOR_RELEVANCE_THRESHOLD = 0.5
 
-Classify the question into exactly one of these categories:
-- direct: general knowledge, definitions, concepts, math, coding syntax
-- vector: specific documents or topics ingested into a knowledge base  
-- web: real-time info, current events, news, live data
+def _is_in_knowledge_base(query: str) -> bool:
+    """
+    Does a quick dense search to check if the knowledge base
+    contains anything relevant to this query.
+    Returns True if the top result exceeds the relevance threshold.
+    """
+    try:
+        from retrieval.embedder import embed
+        from retrieval.vector_store import dense_search
 
-Reply with a single word only. No explanation. No punctuation.
-One of: direct, vector, web
+        q_embedding = embed([query])[0]
+        results = dense_search(q_embedding, top_k=1)
 
-Question: {query}
-Category:"""
+        if not results:
+            return False
 
-def _extract_route(text: str) -> str:
-    """Extracts a valid route keyword from any text."""
-    if not text:
-        return None
-    cleaned = text.strip().lower()
-    # check first word first
-    first_word = cleaned.split()[0].strip(".,:\n") if cleaned else ""
-    if first_word in ("direct", "vector", "web"):
-        return first_word
-    # scan full text for any valid route keyword
-    for route_key in ("direct", "web", "vector"):
-        if route_key in cleaned:
-            return route_key
-    return None
+        top_score = results[0].get("score", 0)
+        print(f"[router] KB relevance score: {top_score:.4f} (threshold: {VECTOR_RELEVANCE_THRESHOLD})")
+        return top_score >= VECTOR_RELEVANCE_THRESHOLD
 
-def route(query: str) -> str:
+    except Exception as e:
+        print(f"[router] KB check failed: {e}")
+        return False
+
+def _is_web_query(query: str) -> bool:
+    """
+    Uses the LLM to check only whether this needs live web data.
+    Binary decision — much more reliable than a three-way classification.
+    """
+    prompt = """Does this question require real-time or very recent information 
+(current news, live prices, today's events, recent releases)?
+
+Reply with YES or NO only.
+
+Question: {query}""".format(query=query)
+
     response = client.chat.completions.create(
         model=GENERATION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": ROUTER_PROMPT.format(query=query)
-            }
-        ],
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
-        max_tokens=1024,  # enough for think block + the single word answer
+        max_tokens=1024,
         extra_body={"think": False}
     )
 
     message = response.choices[0].message
+    raw = message.content or ""
+    if not raw and hasattr(message, "reasoning_content"):
+        raw = message.reasoning_content or ""
 
-    # try content first
-    decision = _extract_route(message.content)
+    return "yes" in raw.strip().lower()
 
-    # if empty, fall back to reasoning_content
-    if not decision and hasattr(message, "reasoning_content"):
-        print(f"[router] content empty, parsing reasoning_content")
-        decision = _extract_route(message.reasoning_content)
+def route(query: str) -> str:
+    """
+    Three-step routing:
+    1. Check if query needs live web data (LLM binary decision)
+    2. Check if knowledge base has relevant content (vector similarity)
+    3. Default to direct if neither matches
+    """
+    # step 1 — web check first, it's the most clear-cut decision
+    if _is_web_query(query):
+        print(f"[router] → web")
+        return "web"
 
-    print(f"[router] → {decision or 'vector (default)'}")
-    return decision or "vector"
+    # step 2 — check knowledge base relevance via vector similarity
+    if _is_in_knowledge_base(query):
+        print(f"[router] → vector")
+        return "vector"
+
+    # step 3 — nothing relevant in KB, answer directly
+    print(f"[router] → direct")
+    return "direct"

@@ -48,3 +48,40 @@ def dense_search(query_embedding: list[float], top_k: int = TOP_K_DENSE) -> list
             return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
+    
+def get_ingested_sources() -> list[str]:
+    """Returns a list of all unique sources in the knowledge base."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT source FROM documents")
+            return [row[0] for row in cur.fetchall()]
+    finally:
+        conn.close()
+    
+
+def get_source_chunk_count(source: str) -> int:
+    """Returns how many chunks exist for a given source."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM documents WHERE source = %s",
+                (source,)
+            )
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+def source_exists(source: str) -> bool:
+    """Returns True if this source has already been ingested."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM documents WHERE source = %s LIMIT 1",
+                (source,)
+            )
+            return cur.fetchone() is not None
+    finally:
+        conn.close()

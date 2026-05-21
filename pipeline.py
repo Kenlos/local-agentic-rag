@@ -1,4 +1,5 @@
 # pipeline.py
+import os
 from ingestion.web import ingest_url
 from ingestion.local import ingest_file
 from retrieval.embedder import embed
@@ -12,11 +13,17 @@ from router import route
 import requests
 from bs4 import BeautifulSoup
 
-def ingest(source: str) -> dict:
+def ingest(source: str, force: bool = False) -> dict:
     """
     Ingests a URL or local file path into the knowledge base.
-    Automatically detects source type.
+    Skips if source already exists unless force=True.
     """
+    from retrieval.vector_store import source_exists
+
+    if not force and source_exists(source):
+        print(f"[ingest] skipping — already ingested: {source}")
+        return {"ingested": 0, "source": source, "skipped": True}
+
     if source.startswith("http://") or source.startswith("https://"):
         chunks = ingest_url(source)
     else:
@@ -26,10 +33,36 @@ def ingest(source: str) -> dict:
     insert_chunks(chunks, embeddings)
     build_index(chunks)
 
-    return {"ingested": len(chunks), "source": source}
+    return {"ingested": len(chunks), "source": source, "skipped": False}
+
+# This sets a dynamic threshold for data quality. Will use fallback routing if threshold not met
+def _dynamic_threshold(chunk_count: int) -> float:
+    """
+    Returns a confidence threshold based on how much content
+    exists for the most relevant source.
+
+    Thresholds:
+    - Sparse  (<10 chunks)  → -1.0  very lenient, accept weak matches
+    - Medium  (10-30 chunks) → 0.0  standard threshold
+    - Rich    (>30 chunks)  → 1.0  strict, only accept strong matches
+    
+    The more content we have on a topic, the more we expect
+    retrieval to find a precise, high-scoring match.
+    """
+    if chunk_count < 10:
+        threshold = -1.0
+        quality = "sparse"
+    elif chunk_count < 30:
+        threshold = 0.0
+        quality = "medium"
+    else:
+        threshold = 1.0
+        quality = "rich"
+
+    print(f"[pipeline] source has {chunk_count} chunks ({quality}) → threshold: {threshold}")
+    return threshold
 
 def _rag_query(question: str) -> dict:
-    """Internal — runs the full RAG retrieval + generation pipeline."""
     queries = expand_query(question)
 
     all_dense, all_sparse = [], []
@@ -51,9 +84,62 @@ def _rag_query(question: str) -> dict:
 
     fused = reciprocal_rank_fusion(dense_deduped, sparse_deduped)
     reranked = rerank(question, fused)
-    result = generate(question, reranked)
+
+    # get the top source and its chunk count
+    first_embedding = embed([question])[0]
+
+    if reranked:
+        top_source = reranked[0]["source"]
+        from retrieval.vector_store import get_source_chunk_count
+        chunk_count = get_source_chunk_count(top_source)
+    else:
+        chunk_count = 0
+
+    threshold = _dynamic_threshold(chunk_count)
+    top_score = reranked[0].get("rerank_score", -999) if reranked else -999
+    confident = top_score >= threshold
+
+    print(f"[pipeline] top rerank score: {top_score:.4f} — {'confident' if confident else 'low confidence, will fallback'}")
+
+    result = generate(question, reranked) if confident else {"answer": None, "sources": []}
     result["chunks"] = reranked
+    result["confident"] = confident
     return result
+
+def query(question: str) -> dict:
+    """
+    Main entry point with fallback routing.
+    Routes → retrieves → checks quality → falls back if needed.
+    """
+    decision = route(question)
+    print(f"[router] → {decision}")
+
+    # web route — no fallback needed
+    if decision == "web":
+        result = _web_query(question)
+        result["route"] = "web"
+        return result
+    
+    # vector route — attempt retrieval, fall back to direct if low confidence
+    if decision == "vector":
+        result = _rag_query(question)
+
+        if result["confident"]:
+            result["route"] = "vector"
+            return result
+
+        # low confidence — fall back to direct
+        print(f"[pipeline] falling back to direct due to low retrieval confidence")
+        direct = _direct_query(question)
+        direct["route"] = "vector→direct"  # shows the fallback happened
+        direct["chunks"] = result["chunks"]  # keep chunks for transparency
+        return direct
+
+    # direct route
+    result = _direct_query(question)
+    result["route"] = "direct"
+    return result
+
 
 def _direct_query(question: str) -> dict:
     """Internal — answers directly from model knowledge, no retrieval."""
@@ -74,7 +160,7 @@ def _direct_query(question: str) -> dict:
         "route": "direct"
     }
 
-def _web_query(question: str) -> dict:
+def _web_query_duckduckgo(question: str) -> dict:
     """
     Fetches live web results using DuckDuckGo lite and runs generation over them.
     """
@@ -148,19 +234,51 @@ def _web_query(question: str) -> dict:
             "route": "web"
         }
 
-def query(question: str) -> dict:
+# Tavily API web query Primary
+def _web_query(question: str) -> dict:
     """
-    Main entry point. Routes the query then executes the right pipeline.
+    Uses Tavily for web search — returns full article content.
+    Falls back to DuckDuckGo if no API key is set.
     """
-    decision = route(question)
-    print(f"[router] → {decision}")
+    tavily_key = os.getenv("TAVILY_API_KEY")
 
-    if decision == "direct":
-        result = _direct_query(question)
-    elif decision == "web":
-        result = _web_query(question)
-    else:
-        result = _rag_query(question)
+    if not tavily_key:
+        print("[web] no Tavily key found, falling back to DuckDuckGo")
+        return _web_query_duckduckgo(question)
 
-    result["route"] = decision
-    return result
+    try:
+        from tavily import TavilyClient
+        from ingestion.chunker import chunk_text
+
+        client = TavilyClient(api_key=tavily_key)
+
+        response = client.search(
+            query=question,
+            search_depth="advanced",
+            max_results=3,
+            include_raw_content=True  # full article text not just snippets
+        )
+
+        live_chunks = []
+
+        for result in response.get("results", []):
+            # prefer raw content, fall back to snippet
+            content = result.get("raw_content") or result.get("content", "")
+            url = result.get("url", "")
+
+            if content and len(content) > 100:
+                chunks = chunk_text(content, source=url)
+                live_chunks.extend(chunks)
+
+        if not live_chunks:
+            print("[web] Tavily returned no content, falling back to DuckDuckGo")
+            return _web_query_duckduckgo(question)
+
+        result = generate(question, live_chunks[:5])
+        result["chunks"] = live_chunks[:5]
+        result["route"] = "web"
+        return result
+
+    except Exception as e:
+        print(f"[web] Tavily failed: {e}, falling back to DuckDuckGo")
+        return _web_query_duckduckgo(question)
