@@ -85,3 +85,109 @@ def source_exists(source: str) -> bool:
             return cur.fetchone() is not None
     finally:
         conn.close()
+
+def cache_lookup(question: str) -> dict | None:
+    """
+    Searches for a cached answer to a similar question using
+    PostgreSQL full-text search.
+
+    Why full-text search instead of exact match:
+    "How does RAG work?" and "How does RAG actually work?" should
+    hit the same cache entry. Full-text search handles synonyms,
+    stop words, and word order variation automatically.
+
+    Why quality >= 0.7:
+    We only cache answers we're confident in. Returning a cached
+    low-quality answer is worse than computing a fresh one.
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, question, answer, route, sources, quality, hits
+                FROM query_cache
+                WHERE to_tsvector('english', question) @@ plainto_tsquery('english', %s)
+                AND quality >= 0.7
+                ORDER BY quality DESC, created_at DESC
+                LIMIT 1
+                """,
+                (question,)
+            )
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    "UPDATE query_cache SET hits = hits + 1 WHERE id = %s",
+                    (row["id"],)
+                )
+                conn.commit()
+                return dict(row)
+            return None
+    finally:
+        conn.close()
+
+def cache_store(question: str, answer: str, route: str,
+                sources: list, quality: float) -> None:
+    """
+    Stores an answer in the cache.
+
+    Only called when the answer is substantive — we check this
+    in pipeline.py before calling here.
+
+    ON CONFLICT DO NOTHING prevents duplicate cache entries
+    if the same question is asked twice before the first answer
+    is cached (race condition on slow machines).
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO query_cache
+                    (question, answer, route, sources, quality)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (question, answer, route,
+                 psycopg2.extras.Json(sources), quality)
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+def delete_source(source: str) -> int:
+    """
+    Deletes all chunks for a given source.
+    Used by refresh_source() to clear stale content before re-ingesting.
+    Returns the number of rows deleted.
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM documents WHERE source = %s",
+                (source,)
+            )
+            deleted = cur.rowcount
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
+
+
+def get_source_chunk_count(source: str) -> int:
+    """
+    Returns how many chunks exist for a given source.
+    Used by the dynamic threshold to scale confidence requirements
+    based on how much content we have on a topic.
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM documents WHERE source = %s",
+                (source,)
+            )
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
