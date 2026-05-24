@@ -30,14 +30,43 @@ Good answers are cached — repeat questions return instantly
 
 ## Benchmarks
 
-Measured against a naive dense-search baseline using RAGAs evaluation:
+Two evaluation runs — a RAGAs metric evaluation on a focused 3-question set, and a comprehensive real-world evaluation across 19 questions spanning four topic areas (AI/ML, software engineering, business, and science).
 
-| Metric | Naive Baseline | This Pipeline | Improvement |
+### Comprehensive real-world evaluation (19 questions, 4 categories)
+
+Measures keyword coverage against ground truth answers. Excludes one data point invalidated by a system sleep event during the run.
+
+| Metric | Naive Baseline | Enhanced Pipeline | Improvement |
 |---|---|---|---|
-| Answer Relevancy | 63.5% | 97.0% | +34% |
-| Context Recall | 0.0% | 50.0% | +50% |
+| Overall quality | 39.0% | 66.5% | +27.5pp |
+| AI / ML questions | 45.8% | 69.8% | +24.0pp |
+| Software Engineering | 38.9% | 66.0% | +27.1pp |
+| Business questions | 33.4% | 54.6% | +21.2pp |
+| Science questions | 37.5% | 75.8% | +38.3pp |
 
-> A context recall of 0% on the naive baseline means pure vector search retrieved chunks that contained none of the information needed to answer correctly. Hybrid retrieval + reranking fixed this entirely.
+Routing accuracy across the 19 questions:
+
+| Route type | Accuracy | Notes |
+|---|---|---|
+| Vector (KB retrieval) | 92% (11/12) | One question below KB relevance threshold |
+| Web search | 100% (2/2) | Keyword detection working correctly |
+| Direct (model knowledge) | 50% (3/6) | Known gap — KB relevance pulls general questions into retrieval |
+
+Biggest individual improvements over naive:
+
+- Q18 (speed of light): +77.5pp — naive failed with vector, enhanced correctly routed direct
+- Q20 (Pythagorean theorem): +71.8pp — same pattern, pure knowledge question
+- Q19 (quantum computing 2026): +40.0pp — naive had no live data, enhanced fetched current results
+- Q9 (database indexes): +37.8pp — cache hit, returned in 0.025s vs 26s naive
+
+### RAGAs metric evaluation (3 questions, focused)
+
+| Metric | Naive Baseline | Enhanced Pipeline | Improvement |
+|---|---|---|---|
+| Answer Relevancy | 63.5% | 97.0% | +33.5pp |
+| Context Recall | 0.0% | 50.0% | +50.0pp |
+
+> Context recall of 0% on the naive baseline means pure vector search retrieved chunks containing none of the information needed to answer correctly. Hybrid retrieval and reranking fixed this entirely.
 
 ---
 

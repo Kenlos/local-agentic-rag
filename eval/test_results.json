@@ -1,0 +1,355 @@
+{
+  "timestamp": "2026-05-24T00:26:39.765563",
+  "enhanced_results": [
+    {
+      "id": 1,
+      "category": "AI / ML",
+      "question": "What are the main components of a RAG pipeline?",
+      "expected_route": "vector",
+      "actual_route": "direct",
+      "route_correct": false,
+      "quality_score": 0.773,
+      "time": 34.56819415092468,
+      "answer_length": 3060,
+      "cache_hit": false
+    },
+    {
+      "id": 2,
+      "category": "AI / ML",
+      "question": "How do large language models handle context windows?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.783,
+      "time": 96.95704507827759,
+      "answer_length": 3240,
+      "cache_hit": false
+    },
+    {
+      "id": 3,
+      "category": "AI / ML",
+      "question": "What is the difference between dense and sparse retrieval in vector databases?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.591,
+      "time": 116.07787227630615,
+      "answer_length": 2763,
+      "cache_hit": false
+    },
+    {
+      "id": 4,
+      "category": "AI / ML",
+      "question": "What are hallucinations in AI models and why do they occur?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.583,
+      "time": 96.5970458984375,
+      "answer_length": 1839,
+      "cache_hit": false
+    },
+    {
+      "id": 5,
+      "category": "AI / ML",
+      "question": "What is HNSW indexing and why is it used in vector databases?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.76,
+      "time": 122.63220524787903,
+      "answer_length": 1840,
+      "cache_hit": false
+    },
+    {
+      "id": 6,
+      "category": "Software Engineering",
+      "question": "What is PostgreSQL and what makes it different from other databases?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.789,
+      "time": 859.9926171302795,
+      "answer_length": 2414,
+      "cache_hit": false
+    },
+    {
+      "id": 7,
+      "category": "Software Engineering",
+      "question": "How does Docker containerization work?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.682,
+      "time": 142.54562711715698,
+      "answer_length": 3319,
+      "cache_hit": false
+    },
+    {
+      "id": 8,
+      "category": "Software Engineering",
+      "question": "What is the difference between a Docker container and a Docker image?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.8,
+      "time": 123.65235877037048,
+      "answer_length": 1308,
+      "cache_hit": false
+    },
+    {
+      "id": 9,
+      "category": "Software Engineering",
+      "question": "What are database indexes and when should you use them?",
+      "expected_route": "vector",
+      "actual_route": "cache:vector+web",
+      "route_correct": true,
+      "quality_score": 0.478,
+      "time": 0.025407075881958008,
+      "answer_length": 1840,
+      "cache_hit": true
+    },
+    {
+      "id": 10,
+      "category": "Software Engineering",
+      "question": "What is the purpose of a Docker Compose file?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.667,
+      "time": 113.68774676322937,
+      "answer_length": 617,
+      "cache_hit": false
+    },
+    {
+      "id": 11,
+      "category": "Business",
+      "question": "What does Paul Graham say about how to find good startup ideas?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.6,
+      "time": 173.50394892692566,
+      "answer_length": 3443,
+      "cache_hit": false
+    },
+    {
+      "id": 12,
+      "category": "Business",
+      "question": "What does Paul Graham say about the qualities needed for great work?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.696,
+      "time": 115.14043283462524,
+      "answer_length": 2197,
+      "cache_hit": false
+    },
+    {
+      "id": 13,
+      "category": "Business",
+      "question": "What is product-market fit and how do you know when you have it?",
+      "expected_route": "direct",
+      "actual_route": "web",
+      "route_correct": false,
+      "quality_score": 0.45,
+      "time": 47.14622616767883,
+      "answer_length": 1770,
+      "cache_hit": false
+    },
+    {
+      "id": 14,
+      "category": "Business",
+      "question": "What is the difference between a startup and a small business?",
+      "expected_route": "direct",
+      "actual_route": "vector+web",
+      "route_correct": false,
+      "quality_score": 0.65,
+      "time": 109.45749878883362,
+      "answer_length": 1669,
+      "cache_hit": false
+    },
+    {
+      "id": 15,
+      "category": "Business",
+      "question": "What are the latest AI tools being used by startups in 2026?",
+      "expected_route": "web",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.333,
+      "time": 102.44078588485718,
+      "answer_length": 1474,
+      "cache_hit": false
+    },
+    {
+      "id": 16,
+      "category": "Science",
+      "question": "What are the main causes of climate change?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.8,
+      "time": 131.43151378631592,
+      "answer_length": 2487,
+      "cache_hit": false
+    },
+    {
+      "id": 17,
+      "category": "Science",
+      "question": "How does quantum computing differ from classical computing?",
+      "expected_route": "vector",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.632,
+      "time": 164.5559003353119,
+      "answer_length": 2389,
+      "cache_hit": false
+    },
+    {
+      "id": 18,
+      "category": "Science",
+      "question": "What is the speed of light and why is it important in physics?",
+      "expected_route": "direct",
+      "actual_route": "direct",
+      "route_correct": true,
+      "quality_score": 0.875,
+      "time": 25.719027996063232,
+      "answer_length": 2697,
+      "cache_hit": false
+    },
+    {
+      "id": 19,
+      "category": "Science",
+      "question": "What are the latest developments in quantum computing in 2026?",
+      "expected_route": "web",
+      "actual_route": "vector+web",
+      "route_correct": true,
+      "quality_score": 0.667,
+      "time": 164.01644206047058,
+      "answer_length": 3711,
+      "cache_hit": false
+    },
+    {
+      "id": 20,
+      "category": "Science",
+      "question": "What is the Pythagorean theorem?",
+      "expected_route": "direct",
+      "actual_route": "direct",
+      "route_correct": true,
+      "quality_score": 0.818,
+      "time": 11.457548141479492,
+      "answer_length": 1175,
+      "cache_hit": false
+    }
+  ],
+  "naive_results": [
+    {
+      "id": 1,
+      "quality_score": 0.636,
+      "time": 35.89735007286072
+    },
+    {
+      "id": 2,
+      "quality_score": 0.565,
+      "time": 23.70617914199829
+    },
+    {
+      "id": 3,
+      "quality_score": 0.318,
+      "time": 30.636359930038452
+    },
+    {
+      "id": 4,
+      "quality_score": 0.333,
+      "time": 48.977829694747925
+    },
+    {
+      "id": 5,
+      "quality_score": 0.44,
+      "time": 23.171439170837402
+    },
+    {
+      "id": 6,
+      "quality_score": 0.842,
+      "time": 43.33723497390747
+    },
+    {
+      "id": 7,
+      "quality_score": 0.591,
+      "time": 35.22022294998169
+    },
+    {
+      "id": 8,
+      "quality_score": 0.533,
+      "time": 31.87658405303955
+    },
+    {
+      "id": 9,
+      "quality_score": 0.1,
+      "time": 26.583909034729004
+    },
+    {
+      "id": 10,
+      "quality_score": 0.333,
+      "time": 26.78599500656128
+    },
+    {
+      "id": 11,
+      "quality_score": 0.76,
+      "time": 55.37455177307129
+    },
+    {
+      "id": 12,
+      "quality_score": 0.609,
+      "time": 52.15357685089111
+    },
+    {
+      "id": 13,
+      "quality_score": 0.1,
+      "time": 22.41107702255249
+    },
+    {
+      "id": 14,
+      "quality_score": 0.1,
+      "time": 20.58335518836975
+    },
+    {
+      "id": 15,
+      "quality_score": 0.1,
+      "time": 24.0452778339386
+    },
+    {
+      "id": 16,
+      "quality_score": 0.8,
+      "time": 25.21141481399536
+    },
+    {
+      "id": 17,
+      "quality_score": 0.632,
+      "time": 45.33256196975708
+    },
+    {
+      "id": 18,
+      "quality_score": 0.1,
+      "time": 17.686300039291382
+    },
+    {
+      "id": 19,
+      "quality_score": 0.267,
+      "time": 29.810400009155273
+    },
+    {
+      "id": 20,
+      "quality_score": 0.1,
+      "time": 21.58668065071106
+    }
+  ],
+  "summary": {
+    "enhanced_avg_quality": 0.67135,
+    "naive_avg_quality": 0.41295000000000004,
+    "quality_delta": 0.25839999999999996,
+    "routing_accuracy": 0.85,
+    "avg_query_time": 137.58027222156525,
+    "cache_hits": 1
+  }
+}
