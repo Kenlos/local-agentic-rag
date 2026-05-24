@@ -61,6 +61,18 @@ Evaluated using RAGAs against a naive dense-search baseline:
 
 ---
 
+## Quick Setup with Docker Compose (Recommended)
+
+git clone https://github.com/your-username/rag-pipeline.git
+cd rag-pipeline
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# edit .env — set GENERATION_MODEL and HARDWARE_TIER
+python setup.py
+
+---
+
 ## Setup
 
 ### 1 — Clone the repository

@@ -1,0 +1,56 @@
+# docker-compose.yml
+# Defines the services needed to run the RAG pipeline.
+# Currently one service: PostgreSQL with pgvector.
+# LM Studio runs natively on your host machine, not in Docker,
+# because it needs direct GPU/Neural Engine access.
+
+services:
+  postgres:
+    # Official pgvector image — PostgreSQL 16 with vector extension pre-installed.
+    # This is why you don't need to compile pgvector from source anymore.
+    image: pgvector/pgvector:pg16
+
+    container_name: rag_postgres
+
+    environment:
+      # These env vars are read by the PostgreSQL container on first start.
+      # Change POSTGRES_PASSWORD to something secure before deploying remotely.
+      POSTGRES_DB: rag_db
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
+
+    ports:
+      # Maps container port 5432 to host port 5432.
+      # Format is host:container.
+      # This lets your Python code connect via localhost:5432
+      # even though PostgreSQL is running inside a container.
+      - "5432:5432"
+
+    volumes:
+      # Two volumes serve different purposes:
+
+      # 1. Named volume — persists your database data across container restarts.
+      #    Without this, all your ingested chunks disappear every time
+      #    you restart the container.
+      - postgres_data:/var/lib/postgresql/data
+
+      # 2. Bind mount — mounts your init.sql into the container's
+      #    initialization directory. PostgreSQL runs any .sql files
+      #    in this directory automatically on first startup.
+      #    This is what creates your tables and indexes automatically.
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      # Docker will run this command periodically to check if PostgreSQL
+      # is ready to accept connections. Other services that depend on
+      # postgres will wait until this passes before starting.
+      test: ["CMD-SHELL", "pg_isready -U rag_user -d rag_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# Named volumes are managed by Docker, not your filesystem.
+# They persist between container restarts and survive docker compose down.
+# Use 'docker compose down -v' to delete them (this deletes all your data).
+volumes:
+  postgres_data:
