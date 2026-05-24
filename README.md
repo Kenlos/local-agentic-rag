@@ -1,274 +1,322 @@
 # Local Agentic RAG Pipeline + MCP Server
 
-A production-quality local Retrieval-Augmented Generation (RAG) pipeline with hybrid retrieval, adaptive routing, a ReAct agent, and an MCP server — callable from Claude Desktop, Cursor, or any MCP-compatible client.
+A production-quality local RAG (Retrieval-Augmented Generation) pipeline that supercharges any local AI model with hybrid retrieval, intelligent routing, and an MCP server — callable from Claude Desktop, Cursor, or any MCP-compatible AI client.
 
-Built entirely on local infrastructure. No OpenAI. No LangChain. No cloud dependencies required.
+**No cloud APIs required. No LangChain. No framework lock-in. Just plug in your local model and go.**
 
 ---
 
-## Features
+## What does this do?
 
-- **Hybrid retrieval** — dense vector search (pgvector) + BM25 sparse retrieval fused with Reciprocal Rank Fusion (RRF)
-- **Cross-encoder reranking** — re-scores retrieved chunks for precision before generation
-- **Query expansion** — rewrites each query multiple ways to improve recall
-- **Adaptive router** — decides per query whether to retrieve from the knowledge base, search the live web, or answer directly
-- **Dynamic confidence threshold** — adjusts retrieval confidence requirements based on data quality per source
-- **ReAct agent** — manually implemented reasoning loop with `vector_search`, `web_search`, `code_exec`, and `calculator` tools
-- **MCP server** — exposes the full pipeline as a Model Context Protocol server callable from any MCP-compatible client
-- **Web search** — Tavily integration for full article content retrieval with DuckDuckGo fallback
-- **Dual database support** — local PostgreSQL for development, any remote PostgreSQL provider (Supabase, Neon, Railway) for production
-- **Duplicate prevention** — source-level deduplication with force refresh for cron job use cases
-- **RAGAs evaluation** — benchmarked against a naive dense-search baseline
+When you ask a question, most AI models answer purely from their training data. This pipeline gives your local model three superpowers:
+
+1. **Knowledge base** — ingest any web page or document, and the model answers from that content instead of guessing
+2. **Live web search** — automatically searches the web for current information when the question needs it
+3. **Smart routing** — figures out the best source for each question without you telling it what to do
+
+```
+You ask a question
+        ↓
+Router decides: use my knowledge base, search the web, or answer directly?
+        ↓
+Retrieves the most relevant content
+        ↓
+Model generates a grounded, cited answer
+        ↓
+Good answers are cached — repeat questions return instantly
+```
 
 ---
 
 ## Benchmarks
 
-Evaluated using RAGAs against a naive dense-search baseline:
+Measured against a naive dense-search baseline using RAGAs evaluation:
 
-| Metric | Naive Baseline | Enhanced Pipeline | Delta |
+| Metric | Naive Baseline | This Pipeline | Improvement |
 |---|---|---|---|
 | Answer Relevancy | 63.5% | 97.0% | +34% |
 | Context Recall | 0.0% | 50.0% | +50% |
 
-> Context recall of 0% on the naive baseline means pure vector search retrieved chunks containing none of the information needed to answer correctly. Hybrid retrieval + reranking fixed this entirely.
+> A context recall of 0% on the naive baseline means pure vector search retrieved chunks that contained none of the information needed to answer correctly. Hybrid retrieval + reranking fixed this entirely.
 
 ---
 
-## Tech Stack
+## Who is this for?
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.11+ |
-| Vector store | pgvector + PostgreSQL |
-| Sparse retrieval | BM25s |
-| Embeddings | nomic-embed-text-v1.5 (sentence-transformers) |
-| Reranker | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| Generation | Any OpenAI-compatible local model via LM Studio |
-| Web search | Tavily (DuckDuckGo fallback) |
-| MCP server | mcp (official Python SDK) |
-| Evaluation | RAGAs |
-| Web scraping | BeautifulSoup + requests |
+- **Developers** running local models (LM Studio, Ollama, llama.cpp) who want production-quality RAG without cloud dependencies
+- **Researchers** who want to query their own documents with a local model
+- **Builders** who want to expose their RAG pipeline as an MCP server for Claude Desktop or Cursor
 
 ---
 
-## Prerequisites
+## What you need before starting
 
-- Python 3.11+
-- PostgreSQL 16+ with pgvector extension
-- [LM Studio](https://lmstudio.ai) with any OpenAI-compatible local model loaded
-- Git
+Before cloning this repo, make sure you have:
+
+| Requirement | Why | How to get it |
+|---|---|---|
+| Python 3.11+ | Runs the pipeline | [python.org](https://python.org) |
+| Docker Desktop | Runs PostgreSQL with pgvector | [docker.com/products/docker-desktop](https://docker.com/products/docker-desktop) |
+| LM Studio | Runs your local AI model | [lmstudio.ai](https://lmstudio.ai) |
+| Git | Clones this repo | [git-scm.com](https://git-scm.com) |
+
+**How much RAM do I need?**
+
+| RAM | Recommended model size | Pipeline tier |
+|---|---|---|
+| 8–16 GB | 7B models (Mistral 7B, Llama 3.1 8B) | small |
+| 16–32 GB | 13B models (Llama 3.1 13B, Qwen 2.5 14B) | medium |
+| 32 GB+ | 30B+ models (Qwen3 35B, Llama 3.1 70B Q4) | large |
 
 ---
 
-## Quick Setup with Docker Compose (Recommended)
+## Setup — step by step
 
-git clone https://github.com/your-username/rag-pipeline.git
-cd rag-pipeline
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# edit .env — set GENERATION_MODEL and HARDWARE_TIER
-python setup.py
-
----
-
-## Setup
-
-### 1 — Clone the repository
+### Step 1 — Clone the repository
 
 ```bash
 git clone https://github.com/your-username/rag-pipeline.git
 cd rag-pipeline
 ```
 
-### 2 — Create and activate a virtual environment
+### Step 2 — Create a Python virtual environment
+
+A virtual environment keeps this project's dependencies isolated from the rest of your system. Think of it as a clean room for this project.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Mac/Linux
-# .venv\Scripts\activate   # Windows
+source .venv/bin/activate
 ```
 
-### 3 — Install dependencies
+> **Windows:** use `.venv\Scripts\activate` instead
+
+You will know it is active when you see `(.venv)` at the start of your terminal prompt.
+
+### Step 3 — Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4 — Configure environment variables
+This installs everything the pipeline needs — embeddings, retrieval, the MCP server, web search, and more. It may take a few minutes the first time.
+
+### Step 4 — Configure your environment
+
+Copy the example config file and fill in your values:
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and fill in your values:
+Open `.env` in any text editor. Here is what each setting means:
 
 ```bash
-# --- environment ---
-DB_ENV=local               # "local" or "remote"
+# ── Hardware ──────────────────────────────────────────────────
+# How much RAM does your machine have?
+# small = 8-16GB, medium = 16-32GB, large = 32GB+
+HARDWARE_TIER=large
 
-# --- local postgres ---
-LOCAL_DB_URL=postgresql://your-user@localhost:5432/rag_db
+# ── Database ──────────────────────────────────────────────────
+# Which database to use. Keep this as "local" for development.
+DB_ENV=local
 
-# --- remote postgres (Supabase, Neon, Railway, etc.) ---
+# Your Docker PostgreSQL connection string.
+# The credentials match what is in docker-compose.yml.
+# Do not change this unless you change docker-compose.yml too.
+LOCAL_DB_URL=postgresql://rag_user:rag_password@localhost:5432/rag_db
+
+# If you want to use a remote database (Supabase, Neon, Railway etc.)
+# fill this in and set DB_ENV=remote
 REMOTE_DB_URL=postgresql://user:password@your-host:5432/dbname
 
-# --- LM Studio ---
+# ── Your Local Model ──────────────────────────────────────────
+# The URL where LM Studio's server is running.
+# This is the default — only change if you moved it.
 LM_STUDIO_BASE_URL=http://localhost:1234/v1
+
+# The exact model name as shown in LM Studio's Developer panel.
+# Copy it exactly — even a small difference will cause errors.
 GENERATION_MODEL=your-exact-model-name-here
+
+# Whether to use the model's extended reasoning mode.
+# Keep this false for speed. Set true only for complex tasks.
 THINKING_MODE=false
 
-# --- embeddings ---
+# ── Embeddings ────────────────────────────────────────────────
+# These are the models used for search — not generation.
+# The defaults work well. Only change if you know what you are doing.
 EMBEDDING_MODEL=nomic-ai/nomic-embed-text-v1.5
 RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
 
-# --- web search (optional but recommended) ---
+# ── Web Search ────────────────────────────────────────────────
+# Optional but strongly recommended. Free tier at app.tavily.com
+# Without this, web search falls back to DuckDuckGo (less content)
 TAVILY_API_KEY=tvly-xxxxxxxxxx
 ```
 
-### 5 — Set up PostgreSQL with pgvector
+### Step 5 — Load your model in LM Studio
 
-**Mac (Homebrew):**
+1. Open LM Studio
+2. Download a model if you have not already (Qwen3, Llama 3, Mistral all work)
+3. Go to the **Developer** tab (the `</>` icon in the sidebar)
+4. Select your model from the dropdown
+5. Click **Start Server**
+6. Copy the exact model name shown — you will need it for `GENERATION_MODEL` in `.env`
 
-```bash
-brew install postgresql@16
-brew services start postgresql@16
+> The server needs to stay running while you use the pipeline. LM Studio can run in the background.
 
-# build pgvector against your PostgreSQL installation
-cd /tmp
-git clone https://github.com/pgvector/pgvector.git
-cd pgvector
-make PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config
-make install PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config
-```
+### Step 6 — Run the setup script
 
-**Create the database:**
+This script checks everything is working and starts the database automatically:
 
 ```bash
-psql -U your-user postgres
+python setup.py
 ```
 
-```sql
-CREATE DATABASE rag_db;
-\c rag_db
-CREATE EXTENSION vector;
+It will:
+- Check your Python version
+- Start PostgreSQL in Docker (creates all tables automatically)
+- Verify your `.env` values are set
+- Test the database connection
+- Test the LM Studio connection
+- Run a quick end-to-end test
 
-CREATE TABLE documents (
-    id          SERIAL PRIMARY KEY,
-    source      TEXT NOT NULL,
-    content     TEXT NOT NULL,
-    embedding   vector(768),
-    metadata    JSONB DEFAULT '{}'
-);
+If anything is wrong it tells you exactly what to fix. A successful run looks like:
 
-CREATE INDEX ON documents
-  USING hnsw (embedding vector_cosine_ops)
-  WITH (m = 16, ef_construction = 64);
 ```
+✅ Python 3.11.x
+✅ Docker 27.x
+✅ PostgreSQL container started
+✅ GENERATION_MODEL is set
+✅ Connected to database (0 documents in knowledge base)
+✅ LM Studio is running with 1 model loaded
+✅ Tier: large — 30B+ models, 32GB+ RAM
+✅ Pipeline working — route: vector
 
-**Using a remote provider (Supabase, Neon, etc.):**
-
-Run the same SQL above in your provider's SQL editor, then set `DB_ENV=remote` and `REMOTE_DB_URL` in your `.env`.
-
-### 6 — Start LM Studio
-
-1. Open LM Studio and load your model
-2. Go to the **Developer** panel
-3. Click **Start Server** — it runs at `http://localhost:1234` by default
-4. Copy the exact model name from the loaded model and set it as `GENERATION_MODEL` in `.env`
-
-> **Recommended:** Any instruction-tuned model with 7B+ parameters works. Qwen3, Llama 3, Mistral all work well. Models with thinking mode (Qwen3) should set `THINKING_MODE=false` for speed-sensitive steps.
+══════════════════════════════════════════════════
+  ✅ Setup complete — pipeline is ready
+══════════════════════════════════════════════════
+```
 
 ---
 
-## Usage
+## Troubleshooting setup
 
-### Ingest a URL
+### `role "rag_user" does not exist`
+
+You have a local PostgreSQL installation already running on port 5432 that conflicts with Docker. Stop it first:
+
+```bash
+# Mac
+brew services stop postgresql@16
+
+# Linux
+sudo systemctl stop postgresql
+```
+
+Then re-run `python setup.py`.
+
+If you need both running at the same time, change the Docker port in `docker-compose.yml` from `5432:5432` to `5433:5432` and update `LOCAL_DB_URL` in `.env` to use port `5433`.
+
+### `connection refused` on LM Studio check
+
+LM Studio is not running or the server has not been started. Open LM Studio, go to the Developer tab, and click **Start Server**.
+
+### `GENERATION_MODEL` errors
+
+The model name in your `.env` does not exactly match what LM Studio shows. In LM Studio's Developer panel, look at the loaded model identifier and copy it character for character into `GENERATION_MODEL`.
+
+---
+
+## Using the pipeline
+
+### Ingest a web page
 
 ```python
 from pipeline import ingest
 
 result = ingest("https://en.wikipedia.org/wiki/Retrieval-augmented_generation")
-print(f"Ingested {result['ingested']} chunks from {result['source']}")
+print(f"Ingested {result['ingested']} chunks")
 ```
 
 ### Ingest a local file
 
+Supported formats: `.txt`, `.md`, `.pdf`, `.docx`
+
 ```python
 from pipeline import ingest
 
-result = ingest("/path/to/document.pdf")
+result = ingest("/path/to/your/document.pdf")
 print(f"Ingested {result['ingested']} chunks")
 ```
 
-Supported file types: `.txt`, `.md`, `.pdf`, `.docx`
-
-### Query the pipeline
+### Ask a question
 
 ```python
 from pipeline import query
 
 result = query("How does RAG reduce hallucinations?")
 print(result["answer"])
-print(f"Route: {result['route']}")
+print(f"Route used: {result['route']}")
 print(f"Sources: {result['sources']}")
 ```
 
-### Force refresh a source
+### Refresh a source (for scheduled updates)
+
+```python
+from pipeline import refresh_source
+
+# deletes old chunks and re-ingests fresh content
+result = refresh_source("https://example.com/page-that-changes")
+```
+
+### Force re-ingest (override duplicate check)
 
 ```python
 from pipeline import ingest
 
-# re-ingests even if source already exists — useful for cron jobs
-result = ingest("https://example.com/listings", force=True)
-```
-
-### Run the ReAct agent
-
-```python
-from agent import run
-
-result = run("What is 3847 divided by 47 and what is the square root of that result?")
-print(result["answer"])
-print(f"Completed in {result['steps']} steps")
-
-# full reasoning trace
-for step in result["trace"]:
-    print(f"Step {step['step']}: {step['action'] or 'ANSWER'}")
+result = ingest("https://example.com", force=True)
 ```
 
 ---
 
 ## MCP Server
 
-The pipeline is exposed as an MCP server with four tools:
+The MCP (Model Context Protocol) server exposes your entire pipeline as tools that any MCP-compatible AI client can call — including Claude Desktop and Cursor.
 
-| Tool | Description |
+### What is MCP?
+
+MCP is an open standard created by Anthropic (now backed by OpenAI, Google, and Microsoft) for connecting AI models to external tools and data. Think of it as a USB-C standard for AI — any MCP-compatible client can plug into any MCP-compatible server without custom integration code.
+
+### Available tools
+
+| Tool | What it does |
 |---|---|
-| `query_knowledge_base(question)` | Runs the full RAG pipeline and returns a grounded answer |
+| `query_knowledge_base(question)` | Runs the full pipeline and returns a grounded answer |
 | `ingest_url(url)` | Scrapes a URL and adds it to the knowledge base |
 | `ingest_file(path)` | Ingests a local file into the knowledge base |
 | `get_sources(question)` | Returns raw retrieved chunks without generating an answer |
-| `evaluate_pipeline()` | Runs the RAGAs evaluation suite and returns metrics |
+| `evaluate_pipeline()` | Runs the RAGAs evaluation suite |
 
-### Start the MCP server
+### Start the server
 
 ```bash
 python mcp_server.py
 ```
 
-### Test with the MCP inspector
+### Test with the MCP Inspector
 
 ```bash
 mcp dev mcp_server.py
 ```
 
-Opens a browser UI where you can call each tool manually.
+This opens a browser UI where you can call each tool manually and see the responses before connecting to a real client.
 
 ### Connect to Claude Desktop
 
-Add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add this to your Claude Desktop config file:
+
+**Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -284,173 +332,265 @@ Add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. You'll see a hammer icon in the chat input — your pipeline tools are now available directly inside Claude.
+Replace `/path/to/rag-pipeline` with your actual project path. Fully quit and restart Claude Desktop. You will see a hammer icon in the chat input — your pipeline tools are now available.
 
 ---
 
-## Switching Between Local and Remote Database
+## Switching between local and remote database
+
+The pipeline supports any PostgreSQL provider — local Docker, Supabase, Neon, Railway, etc.
 
 ```bash
-# development — local PostgreSQL, no network required
+# development — local Docker, works offline, no network required
 DB_ENV=local
 
-# production — any PostgreSQL provider
+# production — remote provider, accessible from anywhere
 DB_ENV=remote
 ```
 
-No code changes required — just flip the `.env` variable.
+No code changes needed — just flip `DB_ENV` in your `.env`.
+
+> **Tip:** develop locally, deploy remotely. Your data will not sync automatically between environments — re-ingest your sources when switching to remote for the first time.
 
 ---
 
-## Running the Evaluation Suite
+## Run the evaluation suite
+
+Measures your pipeline against a naive dense-search baseline:
 
 ```bash
 python -m eval.ragas_runner
 ```
 
-Runs RAGAs evaluation across both the enhanced pipeline and naive baseline, printing a comparison table with deltas.
-
-> **Note:** Evaluation makes many sequential LLM calls. On local hardware, expect 5-15 minutes for a full run depending on your model size and question set.
+Produces a comparison table showing how much hybrid retrieval + reranking improves over plain vector search. Expect 5-15 minutes on local hardware.
 
 ---
 
-## Project Structure
+## Docker commands reference
 
+```bash
+# start PostgreSQL in the background
+docker compose up -d postgres
+
+# stop PostgreSQL (data is preserved)
+docker compose down
+
+# stop PostgreSQL and delete all data (full reset)
+docker compose down -v
+
+# view PostgreSQL logs
+docker compose logs postgres
+
+# open a database shell
+docker compose exec postgres psql -U rag_user -d rag_db
+
+# check container status
+docker compose ps
 ```
-rag_pipeline/
-├── .env.example             # environment variable template
-├── config.py                # all settings in one place
-├── pipeline.py              # single entry point — wires everything together
-├── router.py                # adaptive routing (direct / vector / web)
-├── reranker.py              # cross-encoder re-ranking
-├── query_expansion.py       # multi-query rewriting
-├── generator.py             # LM Studio generation wrapper
-├── agent.py                 # ReAct agent loop (manual, no framework)
-├── mcp_server.py            # MCP server exposing pipeline as tools
-├── ingestion/
-│   ├── web.py               # URL scraping (BeautifulSoup)
-│   ├── local.py             # local file ingestion (txt, md, pdf, docx)
-│   └── chunker.py           # semantic chunking with dynamic chunk sizing
-├── retrieval/
-│   ├── embedder.py          # embedding model wrapper (lazy loaded)
-│   ├── vector_store.py      # pgvector read/write, source management
-│   ├── bm25.py              # BM25 sparse retrieval index
-│   └── hybrid.py            # RRF fusion of dense + sparse results
-└── eval/
-    ├── ragas_runner.py      # RAGAs evaluation suite
-    └── results.md           # benchmark results
-```
+
+> `docker compose down -v` deletes all your ingested data. Use only when you want a clean slate.
 
 ---
 
 ## Architecture
 
-### High-Level Flow
+### How routing works
+
+Every query goes through a three-tier decision process before any retrieval happens:
 
 ```
-User query
-    ↓
-Adaptive Router
-    ├── direct  → LLM answers from training knowledge
-    ├── vector  → full RAG pipeline
-    │       ↓
-    │   Query Expansion (3-4 variants)
-    │       ↓
-    │   Hybrid Retrieval
-    │   ├── Dense search  (pgvector cosine similarity)
-    │   └── Sparse search (BM25)
-    │       ↓
-    │   RRF Fusion (weighted 70/30 dense/sparse)
-    │       ↓
-    │   Cross-Encoder Reranker
-    │       ↓
-    │   Dynamic Confidence Check
-    │   ├── confident    → generate answer
-    │   └── low confidence → fallback to direct
-    │       ↓
-    │   Generation (cited answer)
-    │
-    └── web  → Tavily search → chunk content → generate answer
+Tier 1 — Keyword check (instant, no AI call)
+    Does the question contain words like "today", "latest",
+    "this week", "current", "news"?
+    Yes → route to web search
+    No  → continue to tier 2
+
+Tier 2 — Knowledge base relevance check (fast, no AI call)
+    How similar is this question to content already in the KB?
+    Score >= 0.60 → route to vector retrieval
+    Score <  0.60 → route to direct (model answers from training)
+
+Tier 3 — Multi-part detection (one YES/NO AI call)
+    Does the question have two distinct parts needing different sources?
+    Example: "What does X say about Y AND what are the latest Z?"
+    Yes → use both vector + web, combine results before answering
+    No  → use single best route from tier 1 or 2
 ```
 
-### Layer 1 — Ingestion
+This means for most queries, zero or one AI call is made for routing. The model is only asked to make a decision when rule-based logic genuinely cannot — detecting multi-part questions.
 
-Handles both web URLs and local files. BeautifulSoup strips navigation, scripts, and boilerplate before chunking. A dynamic chunk size kicks in for short documents (under 1,000 words) to ensure fine-grained retrieval on sparse sources. Duplicate ingestion is prevented at the source level — re-ingestion requires an explicit `force=True` flag.
+### How retrieval works
 
-### Layer 2 — Retrieval
+When a question routes to the knowledge base, it goes through five stages:
 
-**Dense retrieval** embeds the query using `nomic-embed-text-v1.5` and finds the top-K nearest chunks by cosine similarity in pgvector using an HNSW index.
+**1 — Query expansion**
 
-**Sparse retrieval** runs the same query through a BM25 index built over all ingested chunks. BM25 captures exact keyword matches that semantic search misses — critical for technical queries with specific terminology.
+The model rewrites the question in multiple ways. "How does RAG work?" becomes three or four variants. Each variant is searched independently, increasing the chance of finding the right content.
 
-**RRF fusion** combines both result sets using Reciprocal Rank Fusion with a 70/30 dense/sparse weighting. Documents appearing in both result sets accumulate higher scores.
+**2 — Dense retrieval**
 
-### Layer 3 — Reranking
+Each query variant is converted to a vector using `nomic-embed-text-v1.5` and compared against all stored chunks using cosine similarity in pgvector. This finds semantically similar content even when the exact words do not match.
 
-A cross-encoder (`ms-marco-MiniLM-L-6-v2`) re-scores each retrieved chunk against the original query. Unlike the bi-encoder used for initial retrieval, the cross-encoder sees both the query and chunk simultaneously — producing more precise relevance scores. Only `TOP_K_FINAL` chunks (default 5) are passed to generation.
+**3 — Sparse retrieval (BM25)**
 
-### Layer 4 — Adaptive Router
+The same variants are run through a BM25 keyword index. This catches exact term matches that semantic search can miss — especially useful for technical terminology, proper nouns, and specific jargon.
 
-Routes each query to the optimal pipeline path using two checks:
+**4 — RRF fusion**
 
-1. **Web check** — binary LLM classification: does this need live data?
-2. **KB relevance check** — cosine similarity between the query and the nearest KB chunk. If the score exceeds `VECTOR_RELEVANCE_THRESHOLD` (default 0.5), route to vector retrieval.
+Results from dense and sparse retrieval are combined using Reciprocal Rank Fusion (70% dense weight, 30% sparse weight). Chunks appearing in both result sets score higher. This produces a ranked list better than either method alone.
 
-### Layer 5 — Dynamic Confidence
+**5 — Cross-encoder reranking**
 
-After retrieval, the top reranker score is compared against a threshold that scales with the amount of content available for that source:
+A cross-encoder model (`ms-marco-MiniLM-L-6-v2`) re-scores the top candidates by reading the query and each chunk together — much more precise than the bi-encoder used for initial retrieval. Only the top 5 chunks pass through to generation.
 
-| Source size | Threshold | Rationale |
+**Dynamic confidence threshold**
+
+Before generating, the pipeline checks whether the reranker score exceeds a threshold that scales with data quality:
+
+| Source size | Threshold | Meaning |
 |---|---|---|
-| < 10 chunks (sparse) | -1.0 | Lenient — limited data, accept weak matches |
-| 10–30 chunks (medium) | 0.0 | Standard — moderate confidence required |
-| > 30 chunks (rich) | 1.0 | Strict — plenty of data, only strong matches |
+| Less than 10 chunks | -1.0 (lenient) | Sparse source — accept weak matches |
+| 10 to 30 chunks | 0.0 (standard) | Moderate source — require some confidence |
+| More than 30 chunks | 1.0 (strict) | Rich source — only strong matches pass |
 
-Low-confidence retrievals fall back to direct generation rather than returning poorly grounded answers.
+If confidence is too low, the pipeline automatically retries with web search rather than generating a poorly-grounded answer.
 
-### Layer 6 — ReAct Agent
+### How caching works
 
-A manually implemented reasoning loop — no LangChain or framework abstractions. The agent follows a strict `Thought → Action → Observation → repeat → Answer` cycle with four tools:
+Every substantive answer is stored in the `query_cache` table in PostgreSQL. On the next similar question, the pipeline does a full-text similarity search against cached questions — a sub-millisecond operation — and returns the cached answer immediately.
 
-- `vector_search` — queries the knowledge base
-- `web_search` — queries live web via Tavily
-- `code_exec` — executes Python in an isolated namespace
-- `calculator` — evaluates math expressions safely
+This reduces repeat query latency from 30-90 seconds to under 0.1 seconds.
 
-The loop runs for a maximum of 6 steps before terminating. Building this manually means every step is fully transparent and debuggable.
+### Full system diagram
 
-### Layer 7 — MCP Server
-
-Wraps the entire pipeline as an MCP server using the official Python SDK. Any MCP-compatible client — Claude Desktop, Cursor, or a custom agent — can call `query_knowledge_base`, `ingest_url`, `get_sources`, or `evaluate_pipeline` through the standardized protocol with no custom integration code.
+```
+                    ┌─────────────────────────────────┐
+                    │           User Query             │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │         Cache Lookup             │
+                    │   (PostgreSQL full-text search)  │
+                    └──────┬───────────────┬───────────┘
+                     Cache │               │ Miss
+                     Hit   │               │
+                           │    ┌──────────▼──────────┐
+                           │    │    Agentic Router    │
+                           │    │                      │
+                           │    │  Tier 1: Keywords    │
+                           │    │  Tier 2: KB score    │
+                           │    │  Tier 3: Multi-part? │
+                           │    └──┬──────┬──────┬─────┘
+                           │  web  │vector│direct│
+                    ┌──────▼──┐ ┌──▼───┐ ┌──▼────┐
+                    │ Return  │ │Tavily│ │Query  │ │Direct│
+                    │ Cached  │ │Search│ │Expand │ │ LLM  │
+                    │ Answer  │ └──┬───┘ └──┬────┘ └──┬───┘
+                    └─────────┘    │    ┌───┴────┐    │
+                                   │    │Dense + │    │
+                                   │    │Sparse  │    │
+                                   │    │  RRF   │    │
+                                   │    └───┬────┘    │
+                                   │    ┌───┴────┐    │
+                                   │    │Rerank  │    │
+                                   │    └───┬────┘    │
+                                   │    ┌───┴────┐    │
+                                   │    │Confid- │    │
+                                   │    │ence?   │    │
+                                   │    └──┬──┬──┘    │
+                              combine   yes│  │no      │
+                           ┌────────────┘  │  └──►web  │
+                    ┌──────▼──────┐ ┌──────▼──────────▼──┐
+                    │   Combine   │ │      Generate       │
+                    │  Contexts   │ │   (cited answer)    │
+                    └──────┬──────┘ └──────────┬──────────┘
+                           └──────────┬─────────┘
+                    ┌─────────────────▼─────────────────┐
+                    │           Cache Store              │
+                    │    (if answer is substantive)      │
+                    └─────────────────┬─────────────────┘
+                    ┌─────────────────▼─────────────────┐
+                    │           Final Answer             │
+                    └───────────────────────────────────┘
+```
 
 ---
 
-## Configuration Reference
+## Project structure
 
-All settings live in `config.py` and are controlled via `.env`:
+```
+rag_pipeline/
+├── docker-compose.yml       # PostgreSQL service — one command setup
+├── init.sql                 # Database schema — runs automatically on first start
+├── setup.py                 # Setup validator — checks everything before you code
+├── config.py                # All settings — controlled via .env
+├── pipeline.py              # Main entry point — wires everything together
+├── router.py                # Agentic router — tiered routing with multi-tool planning
+├── reranker.py              # Cross-encoder reranking
+├── query_expansion.py       # Multi-query rewriting for better recall
+├── generator.py             # LM Studio generation wrapper
+├── agent.py                 # ReAct agent loop (manual, no framework)
+├── mcp_server.py            # MCP server — exposes pipeline as callable tools
+├── .env.example             # Environment variable template
+├── ingestion/
+│   ├── web.py               # URL scraping (BeautifulSoup + Tavily)
+│   ├── local.py             # Local file ingestion (txt, md, pdf, docx)
+│   └── chunker.py           # Dynamic chunking with size adaptation
+├── retrieval/
+│   ├── embedder.py          # Embedding model wrapper (lazy loaded, cached)
+│   ├── vector_store.py      # pgvector operations + cache + source management
+│   ├── bm25.py              # BM25 sparse retrieval index
+│   └── hybrid.py            # RRF fusion of dense + sparse results
+└── eval/
+    ├── ragas_runner.py      # RAGAs evaluation suite
+    └── results.md           # Benchmark results
+```
+
+---
+
+## Configuration reference
+
+All settings live in `config.py` and are controlled via `.env`. You should never need to edit `config.py` directly.
 
 | Variable | Default | Description |
 |---|---|---|
-| `DB_ENV` | `local` | `local` or `remote` |
-| `LOCAL_DB_URL` | — | Local PostgreSQL connection string |
-| `REMOTE_DB_URL` | — | Remote PostgreSQL connection string |
+| `HARDWARE_TIER` | `large` | `small` / `medium` / `large` — tunes chunk size and retrieval depth |
+| `DB_ENV` | `local` | `local` (Docker) or `remote` (any PostgreSQL provider) |
+| `LOCAL_DB_URL` | — | Local Docker connection string |
+| `REMOTE_DB_URL` | — | Remote provider connection string |
 | `LM_STUDIO_BASE_URL` | `http://localhost:1234/v1` | LM Studio server URL |
 | `GENERATION_MODEL` | — | Exact model name as shown in LM Studio |
-| `THINKING_MODE` | `false` | Enable extended reasoning (slower) |
-| `EMBEDDING_MODEL` | `nomic-ai/nomic-embed-text-v1.5` | Sentence-transformers embedding model |
+| `THINKING_MODE` | `false` | Enable extended reasoning (slower but deeper) |
+| `EMBEDDING_MODEL` | `nomic-ai/nomic-embed-text-v1.5` | Embedding model for vector search |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder reranker |
-| `TAVILY_API_KEY` | — | Tavily API key (optional, falls back to DuckDuckGo) |
-| `TOP_K_DENSE` | `20` | Dense retrieval candidates before reranking |
-| `TOP_K_SPARSE` | `20` | BM25 candidates before reranking |
-| `TOP_K_FINAL` | `5` | Chunks passed to generation after reranking |
-| `RRF_K` | `60` | RRF constant (60 is standard) |
-| `DENSE_WEIGHT` | `0.7` | Dense retrieval weight in RRF |
-| `SPARSE_WEIGHT` | `0.3` | Sparse retrieval weight in RRF |
-| `CHUNK_SIZE` | `512` | Words per chunk (standard documents) |
-| `CHUNK_OVERLAP` | `64` | Overlap between consecutive chunks |
+| `TAVILY_API_KEY` | — | Optional — web search (falls back to DuckDuckGo without it) |
+
+---
+
+## Compatibility
+
+Tested with the following local inference servers:
+
+| Server | Status | Notes |
+|---|---|---|
+| LM Studio | ✅ Tested | Recommended. OpenAI-compatible endpoint at port 1234 |
+| Ollama | ✅ Compatible | Set `LM_STUDIO_BASE_URL=http://localhost:11434/v1` |
+| llama.cpp server | ✅ Compatible | Set `LM_STUDIO_BASE_URL` to your server address |
+| Jan | ✅ Compatible | OpenAI-compatible endpoint |
+
+Any server that exposes an OpenAI-compatible `/v1/chat/completions` endpoint will work.
+
+**Tested models:**
+
+| Model | Size | Tier | Notes |
+|---|---|---|---|
+| Qwen3 35B-A3B | 35B MoE | large | Recommended — strong reasoning, fast MoE inference |
+| Qwen3 8B | 8B | small/medium | Good quality, fast |
+| Llama 3.1 8B | 8B | small | Solid baseline |
+| Mistral 7B | 7B | small | Fast, good for low-RAM setups |
 
 ---
 
 ## License
 
-MIT
+MIT — use it, fork it, build on it.
