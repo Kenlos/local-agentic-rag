@@ -1,6 +1,10 @@
 # mcp_server.py
+import sys
+import os
 from mcp.server.fastmcp import FastMCP  # instead of from fastmcp import FastMCP
 import pipeline
+
+sys.stdout = sys.stderr
 
 mcp = FastMCP(
     name="Local Agentic RAG Pipeline",
@@ -17,9 +21,19 @@ mcp = FastMCP(
 @mcp.tool()
 def query_knowledge_base(question: str) -> str:
     """
-    Run the full RAG pipeline for a question.
-    Includes query expansion, hybrid retrieval, reranking, and generation.
-    Returns a grounded answer with cited sources.
+    Answers any question using an intelligent RAG pipeline with three capabilities:
+
+    1. LIVE WEB SEARCH — automatically searches the internet for current events,
+       today's news, recent developments, prices, and any real-time information.
+       Use this for questions like "what's happening in AI today" or "latest news".
+
+    2. KNOWLEDGE BASE — searches ingested documents for specific topics.
+
+    3. DIRECT ANSWER — answers general knowledge questions from model training.
+
+    The pipeline automatically decides which source to use based on the question.
+    Always try this tool first for any question including requests for current
+    or real-time information — it can access the live web.
     """
     try:
         result = pipeline.query(question)
@@ -39,8 +53,10 @@ Sources: {', '.join(sources) if sources else 'None'}"""
 @mcp.tool()
 def ingest_url(url: str) -> str:
     """
-    Scrape a URL and add its content to the knowledge base.
-    Accepts any publicly accessible web page.
+    Scrapes a specific URL you provide and permanently adds its content
+    to the knowledge base for future queries.
+    Use this when the user wants to save a specific page for later retrieval.
+    This is NOT for searching the web — use query_knowledge_base for that.
     """
     try:
         result = pipeline.ingest(url)
