@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-24T00:26:39.765563",
+  "timestamp": "2026-05-24T21:57:14.195004",
   "enhanced_results": [
     {
       "id": 1,
@@ -8,9 +8,9 @@
       "expected_route": "vector",
       "actual_route": "direct",
       "route_correct": false,
-      "quality_score": 0.773,
-      "time": 34.56819415092468,
-      "answer_length": 3060,
+      "quality_score": 0.727,
+      "time": 36.91668891906738,
+      "answer_length": 2760,
       "cache_hit": false
     },
     {
@@ -20,9 +20,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.783,
-      "time": 96.95704507827759,
-      "answer_length": 3240,
+      "quality_score": 0.739,
+      "time": 116.18410205841064,
+      "answer_length": 2824,
       "cache_hit": false
     },
     {
@@ -32,9 +32,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.591,
-      "time": 116.07787227630615,
-      "answer_length": 2763,
+      "quality_score": 0.545,
+      "time": 132.627503156662,
+      "answer_length": 1981,
       "cache_hit": false
     },
     {
@@ -44,9 +44,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.583,
-      "time": 96.5970458984375,
-      "answer_length": 1839,
+      "quality_score": 0.667,
+      "time": 106.04206585884094,
+      "answer_length": 1818,
       "cache_hit": false
     },
     {
@@ -56,9 +56,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.76,
-      "time": 122.63220524787903,
-      "answer_length": 1840,
+      "quality_score": 0.64,
+      "time": 127.6044008731842,
+      "answer_length": 1677,
       "cache_hit": false
     },
     {
@@ -68,9 +68,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.789,
-      "time": 859.9926171302795,
-      "answer_length": 2414,
+      "quality_score": 0.895,
+      "time": 184.41500306129456,
+      "answer_length": 2883,
       "cache_hit": false
     },
     {
@@ -80,9 +80,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.682,
-      "time": 142.54562711715698,
-      "answer_length": 3319,
+      "quality_score": 0.727,
+      "time": 156.87942814826965,
+      "answer_length": 3254,
       "cache_hit": false
     },
     {
@@ -92,9 +92,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.8,
-      "time": 123.65235877037048,
-      "answer_length": 1308,
+      "quality_score": 0.667,
+      "time": 133.91915488243103,
+      "answer_length": 1505,
       "cache_hit": false
     },
     {
@@ -104,9 +104,9 @@
       "expected_route": "vector",
       "actual_route": "cache:vector+web",
       "route_correct": true,
-      "quality_score": 0.478,
-      "time": 0.025407075881958008,
-      "answer_length": 1840,
+      "quality_score": 0.391,
+      "time": 0.019726991653442383,
+      "answer_length": 1677,
       "cache_hit": true
     },
     {
@@ -117,8 +117,8 @@
       "actual_route": "vector+web",
       "route_correct": true,
       "quality_score": 0.667,
-      "time": 113.68774676322937,
-      "answer_length": 617,
+      "time": 102.11889696121216,
+      "answer_length": 1086,
       "cache_hit": false
     },
     {
@@ -129,8 +129,8 @@
       "actual_route": "vector+web",
       "route_correct": true,
       "quality_score": 0.6,
-      "time": 173.50394892692566,
-      "answer_length": 3443,
+      "time": 150.39155292510986,
+      "answer_length": 3054,
       "cache_hit": false
     },
     {
@@ -140,9 +140,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.696,
-      "time": 115.14043283462524,
-      "answer_length": 2197,
+      "quality_score": 0.609,
+      "time": 98.90484714508057,
+      "answer_length": 3564,
       "cache_hit": false
     },
     {
@@ -152,9 +152,9 @@
       "expected_route": "direct",
       "actual_route": "web",
       "route_correct": false,
-      "quality_score": 0.45,
-      "time": 47.14622616767883,
-      "answer_length": 1770,
+      "quality_score": 0.55,
+      "time": 47.92276978492737,
+      "answer_length": 1903,
       "cache_hit": false
     },
     {
@@ -162,11 +162,11 @@
       "category": "Business",
       "question": "What is the difference between a startup and a small business?",
       "expected_route": "direct",
-      "actual_route": "vector+web",
-      "route_correct": false,
-      "quality_score": 0.65,
-      "time": 109.45749878883362,
-      "answer_length": 1669,
+      "actual_route": "direct",
+      "route_correct": true,
+      "quality_score": 0.75,
+      "time": 23.687959909439087,
+      "answer_length": 2549,
       "cache_hit": false
     },
     {
@@ -177,8 +177,8 @@
       "actual_route": "vector+web",
       "route_correct": true,
       "quality_score": 0.333,
-      "time": 102.44078588485718,
-      "answer_length": 1474,
+      "time": 105.12112402915955,
+      "answer_length": 1760,
       "cache_hit": false
     },
     {
@@ -189,8 +189,8 @@
       "actual_route": "vector+web",
       "route_correct": true,
       "quality_score": 0.8,
-      "time": 131.43151378631592,
-      "answer_length": 2487,
+      "time": 136.6300449371338,
+      "answer_length": 2500,
       "cache_hit": false
     },
     {
@@ -200,9 +200,9 @@
       "expected_route": "vector",
       "actual_route": "vector+web",
       "route_correct": true,
-      "quality_score": 0.632,
-      "time": 164.5559003353119,
-      "answer_length": 2389,
+      "quality_score": 0.684,
+      "time": 129.86522006988525,
+      "answer_length": 3208,
       "cache_hit": false
     },
     {
@@ -213,8 +213,8 @@
       "actual_route": "direct",
       "route_correct": true,
       "quality_score": 0.875,
-      "time": 25.719027996063232,
-      "answer_length": 2697,
+      "time": 25.897526025772095,
+      "answer_length": 2731,
       "cache_hit": false
     },
     {
@@ -225,8 +225,8 @@
       "actual_route": "vector+web",
       "route_correct": true,
       "quality_score": 0.667,
-      "time": 164.01644206047058,
-      "answer_length": 3711,
+      "time": 156.76224493980408,
+      "answer_length": 3795,
       "cache_hit": false
     },
     {
@@ -236,9 +236,9 @@
       "expected_route": "direct",
       "actual_route": "direct",
       "route_correct": true,
-      "quality_score": 0.818,
-      "time": 11.457548141479492,
-      "answer_length": 1175,
+      "quality_score": 0.909,
+      "time": 18.43664789199829,
+      "answer_length": 1378,
       "cache_hit": false
     }
   ],
@@ -246,110 +246,110 @@
     {
       "id": 1,
       "quality_score": 0.636,
-      "time": 35.89735007286072
+      "time": 40.93344783782959
     },
     {
       "id": 2,
-      "quality_score": 0.565,
-      "time": 23.70617914199829
+      "quality_score": 0.1,
+      "time": 31.869441032409668
     },
     {
       "id": 3,
       "quality_score": 0.318,
-      "time": 30.636359930038452
+      "time": 21.783541917800903
     },
     {
       "id": 4,
-      "quality_score": 0.333,
-      "time": 48.977829694747925
+      "quality_score": 0.458,
+      "time": 39.24619698524475
     },
     {
       "id": 5,
-      "quality_score": 0.44,
-      "time": 23.171439170837402
+      "quality_score": 0.36,
+      "time": 20.57807207107544
     },
     {
       "id": 6,
-      "quality_score": 0.842,
-      "time": 43.33723497390747
+      "quality_score": 0.789,
+      "time": 37.06174111366272
     },
     {
       "id": 7,
-      "quality_score": 0.591,
-      "time": 35.22022294998169
+      "quality_score": 0.5,
+      "time": 35.43302583694458
     },
     {
       "id": 8,
-      "quality_score": 0.533,
-      "time": 31.87658405303955
+      "quality_score": 0.667,
+      "time": 19.45157814025879
     },
     {
       "id": 9,
-      "quality_score": 0.1,
-      "time": 26.583909034729004
+      "quality_score": 0.478,
+      "time": 48.474600076675415
     },
     {
       "id": 10,
-      "quality_score": 0.333,
-      "time": 26.78599500656128
+      "quality_score": 0.444,
+      "time": 21.001708030700684
     },
     {
       "id": 11,
-      "quality_score": 0.76,
-      "time": 55.37455177307129
+      "quality_score": 0.68,
+      "time": 56.36430311203003
     },
     {
       "id": 12,
-      "quality_score": 0.609,
-      "time": 52.15357685089111
+      "quality_score": 0.522,
+      "time": 58.003012895584106
     },
     {
       "id": 13,
       "quality_score": 0.1,
-      "time": 22.41107702255249
+      "time": 22.849220037460327
     },
     {
       "id": 14,
       "quality_score": 0.1,
-      "time": 20.58335518836975
+      "time": 23.37988519668579
     },
     {
       "id": 15,
       "quality_score": 0.1,
-      "time": 24.0452778339386
+      "time": 34.63533306121826
     },
     {
       "id": 16,
-      "quality_score": 0.8,
-      "time": 25.21141481399536
+      "quality_score": 0.75,
+      "time": 37.11394000053406
     },
     {
       "id": 17,
-      "quality_score": 0.632,
-      "time": 45.33256196975708
+      "quality_score": 0.789,
+      "time": 39.5945999622345
     },
     {
       "id": 18,
       "quality_score": 0.1,
-      "time": 17.686300039291382
+      "time": 24.25962209701538
     },
     {
       "id": 19,
-      "quality_score": 0.267,
-      "time": 29.810400009155273
+      "quality_score": 0.333,
+      "time": 32.22140288352966
     },
     {
       "id": 20,
       "quality_score": 0.1,
-      "time": 21.58668065071106
+      "time": 21.66555905342102
     }
   ],
   "summary": {
-    "enhanced_avg_quality": 0.67135,
-    "naive_avg_quality": 0.41295000000000004,
-    "quality_delta": 0.25839999999999996,
-    "routing_accuracy": 0.85,
-    "avg_query_time": 137.58027222156525,
+    "enhanced_avg_quality": 0.6721,
+    "naive_avg_quality": 0.4162,
+    "quality_delta": 0.2559,
+    "routing_accuracy": 0.9,
+    "avg_query_time": 99.5173454284668,
     "cache_hits": 1
   }
 }

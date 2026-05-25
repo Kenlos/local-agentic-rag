@@ -12,7 +12,7 @@ THINKING_MODE = os.getenv("THINKING_MODE", "false").lower() == "true"
 
 # --- Embeddings ---
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-ai/nomic-embed-text-v1.5")
-EMBEDDING_DIMENSION = 768
+EMBEDDING_DIMENSION = 1024  # must match the dimension of the chosen embedding model
 
 # --- Database ---
 DB_ENV = os.getenv("DB_ENV", "local")  # "local" or "remote"

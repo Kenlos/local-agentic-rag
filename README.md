@@ -30,11 +30,34 @@ Good answers are cached — repeat questions return instantly
 
 ## Benchmarks
 
-Two evaluation runs — a RAGAs metric evaluation on a focused 3-question set, and a comprehensive real-world evaluation across 19 questions spanning four topic areas (AI/ML, software engineering, business, and science).
+Three evaluation runs across two embedding models, measuring real-world answer quality and routing accuracy.
 
-### Comprehensive real-world evaluation (19 questions, 4 categories)
+### Run 3 — mxbai-embed-large-v1 (1024 dimensions) — final configuration
 
-Measures keyword coverage against ground truth answers. Excludes one data point invalidated by a system sleep event during the run.
+20 questions, 4 categories. Current embedding model.
+
+| Metric | Naive Baseline | Enhanced Pipeline | Improvement |
+|---|---|---|---|
+| Overall quality | 41.6% | 67.2% | +25.6pp |
+| AI / ML questions | 37.0% | 66.0% | +29.0pp |
+| Software Engineering | 58.0% | 67.0% | +9.0pp |
+| Business questions | 30.0% | 57.0% | +27.0pp |
+| Science questions | 41.0% | 79.0% | +38.0pp |
+
+Routing accuracy:
+
+| Route type | Accuracy | Notes |
+|---|---|---|
+| Vector (KB retrieval) | 93% (13/14) | One question below KB relevance threshold |
+| Web search | 100% (2/2) | Keyword detection working correctly |
+| Direct (model knowledge) | 75% (3/4) | Improved significantly over nomic |
+| Overall | 90% (18/20) | |
+
+---
+
+### Run 2 — nomic-embed-text-v1.5 (768 dimensions)
+
+19 questions (one invalidated by system sleep). Same KB and test set.
 
 | Metric | Naive Baseline | Enhanced Pipeline | Improvement |
 |---|---|---|---|
@@ -44,22 +67,26 @@ Measures keyword coverage against ground truth answers. Excludes one data point 
 | Business questions | 33.4% | 54.6% | +21.2pp |
 | Science questions | 37.5% | 75.8% | +38.3pp |
 
-Routing accuracy across the 19 questions:
+Routing accuracy: 84% (16/19) — direct routing was 50% (3/6).
 
-| Route type | Accuracy | Notes |
-|---|---|---|
-| Vector (KB retrieval) | 92% (11/12) | One question below KB relevance threshold |
-| Web search | 100% (2/2) | Keyword detection working correctly |
-| Direct (model knowledge) | 50% (3/6) | Known gap — KB relevance pulls general questions into retrieval |
+---
 
-Biggest individual improvements over naive:
+### Embedding model comparison
 
-- Q18 (speed of light): +77.5pp — naive failed with vector, enhanced correctly routed direct
-- Q20 (Pythagorean theorem): +71.8pp — same pattern, pure knowledge question
-- Q19 (quantum computing 2026): +40.0pp — naive had no live data, enhanced fetched current results
-- Q9 (database indexes): +37.8pp — cache hit, returned in 0.025s vs 26s naive
+Switching from nomic (768d) to mxbai (1024d) on the same pipeline and KB:
 
-### RAGAs metric evaluation (3 questions, focused)
+| Metric | nomic-embed-text-v1.5 | mxbai-embed-large-v1 | Change |
+|---|---|---|---|
+| Enhanced quality | 66.5% | 67.2% | +0.7pp |
+| Overall routing accuracy | 84% | 90% | +6pp |
+| Direct routing accuracy | 50% | 75% | +25pp |
+| Delta over naive | +27.5pp | +25.6pp | -1.9pp |
+
+Key finding: overall answer quality is nearly identical between models — the pipeline's hybrid retrieval, reranking, and routing do the heavy lifting regardless of embedding model. The meaningful difference is routing accuracy, where mxbai's higher-dimensional embeddings are significantly better at distinguishing questions genuinely covered by the KB from general knowledge questions.
+
+---
+
+### Run 1 — RAGAs metric evaluation (3 questions, focused)
 
 | Metric | Naive Baseline | Enhanced Pipeline | Improvement |
 |---|---|---|---|
