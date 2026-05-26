@@ -1,6 +1,7 @@
 # query_expansion.py
 from openai import OpenAI
 from config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, GENERATION_MODEL
+from config import MAX_QUERY_VARIANTS
 
 client = OpenAI(base_url=LM_STUDIO_BASE_URL, api_key=LM_STUDIO_API_KEY)
 
@@ -22,8 +23,6 @@ Question: {query}"""
     )
 
     raw = response.choices[0].message.content.strip()
-    variants = [q.strip() for q in raw.split("\n") if q.strip()]
-
-    # always include the original
+    variants = [q.strip() for q in raw.strip().split("\n") if q.strip()]
     all_queries = [query] + variants
-    return all_queries[:4]  # cap at 4 total
+    return all_queries[:MAX_QUERY_VARIANTS] 

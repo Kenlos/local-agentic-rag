@@ -1,5 +1,6 @@
 # config.py
 import os
+import sys as _sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,13 +36,13 @@ TIER_CONFIGS = {
         # Conservative settings to avoid OOM and keep latency under 30s.
         "chunk_size": 256,
         "chunk_overlap": 32,
-        "top_k_dense": 10,
-        "top_k_sparse": 10,
+        "top_k_dense": 5,
+        "top_k_sparse": 5,
         "top_k_final": 3,
         "rrf_k": 60,
         "dense_weight": 0.7,
         "sparse_weight": 0.3,
-        "max_query_variants": 2,   # query expansion: 2 variants instead of 3
+        "max_query_variants": 1, 
         "description": "7B models, 8-16GB RAM"
     },
     "medium": {
@@ -49,13 +50,13 @@ TIER_CONFIGS = {
         # Balanced settings — good quality without maxing out memory.
         "chunk_size": 384,
         "chunk_overlap": 48,
-        "top_k_dense": 15,
-        "top_k_sparse": 15,
+        "top_k_dense": 10,
+        "top_k_sparse": 10,
         "top_k_final": 4,
         "rrf_k": 60,
         "dense_weight": 0.7,
         "sparse_weight": 0.3,
-        "max_query_variants": 3,
+        "max_query_variants": 2,
         "description": "13B models, 16-32GB RAM"
     },
     "large": {
@@ -63,13 +64,13 @@ TIER_CONFIGS = {
         # Full quality settings — your current setup.
         "chunk_size": 512,
         "chunk_overlap": 64,
-        "top_k_dense": 20,
-        "top_k_sparse": 20,
+        "top_k_dense": 10,
+        "top_k_sparse": 10,
         "top_k_final": 5,
         "rrf_k": 60,
         "dense_weight": 0.7,
         "sparse_weight": 0.3,
-        "max_query_variants": 4,
+        "max_query_variants": 2,
         "description": "30B+ models, 32GB+ RAM"
     }
 }
@@ -88,9 +89,6 @@ RRF_K = _tier["rrf_k"]
 DENSE_WEIGHT = _tier["dense_weight"]
 SPARSE_WEIGHT = _tier["sparse_weight"]
 MAX_QUERY_VARIANTS = _tier["max_query_variants"]
-
-print(f"[config] hardware tier: {HARDWARE_TIER} ({_tier['description']})")
-print(f"[config] chunk size: {CHUNK_SIZE} | top_k: {TOP_K_DENSE} dense / {TOP_K_SPARSE} sparse → {TOP_K_FINAL} final")
 
 # --- Reranker ---
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")

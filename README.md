@@ -360,6 +360,32 @@ LM Studio is not running or the server has not been started. Open LM Studio, go 
 
 The model name in your `.env` does not exactly match what LM Studio shows. In LM Studio's Developer panel, look at the loaded model identifier and copy it character for character into `GENERATION_MODEL`.
 
+### MCP server times out connecting to Claude Desktop (`MCP error -32001`)
+
+This has two common causes:
+
+**Cause 1 — Python 3.13/3.14 compatibility**
+The MCP SDK has known issues with Python 3.13 and 3.14. Create a Python 3.11 environment instead:
+
+```bash
+brew install python@3.11
+python3.11 -m venv .venv311
+source .venv311/bin/activate
+pip install -r requirements.txt
+```
+
+Then update the `command` path in `claude_desktop_config.json` to point at `.venv311/bin/python`.
+
+**Cause 2 — print statements corrupting the MCP stdout stream**
+The MCP protocol communicates over stdout. Any `print()` call that reaches stdout before or during the handshake corrupts the JSON stream. The `mcp_server.py` redirects all `print()` calls to stderr using `builtins.print` override — do not remove this. If you add new modules that print at import time, ensure those print statements go to stderr.
+
+**Cause 3 — LM Studio server not running**
+The pipeline connects to LM Studio on startup. If LM Studio is not running with a model loaded and the server started, the MCP server will fail silently. Always start LM Studio and load your model before opening Claude Desktop.
+
+### MCP tools appear but queries return "Connection error"
+
+LM Studio's server stopped running after the MCP server started. The MCP server stays alive but loses its connection to the generation model. Restart LM Studio's server and reload the Claude Desktop connection.
+
 ---
 
 ## Apple Silicon — MLX models
@@ -471,6 +497,8 @@ Or use the startup script if you created one in Step 7:
 ./start_mcp.sh
 ```
 
+> **Python version note:** The MCP SDK has known compatibility issues with Python 3.13 and 3.14. If you experience connection timeouts with Claude Desktop, create a Python 3.11 virtual environment instead — it is the most stable version for this stack. See the troubleshooting section below.
+
 ### Test with the MCP Inspector
 
 ```bash
@@ -491,6 +519,7 @@ Add this to your Claude Desktop config file:
     "rag-pipeline": {
       "command": "/absolute/path/to/rag-pipeline/.venv/bin/python",
       "args": ["/absolute/path/to/rag-pipeline/mcp_server.py"],
+      "timeout": 300000,
       "env": {
         "DB_ENV": "local",
         "LOCAL_DB_URL": "postgresql://rag_user:rag_password@localhost:5432/rag_db",
@@ -500,7 +529,8 @@ Add this to your Claude Desktop config file:
         "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
         "HARDWARE_TIER": "large",
         "THINKING_MODE": "false",
-        "TAVILY_API_KEY": "tvly-xxxxxxxxxx"
+        "TAVILY_API_KEY": "tvly-xxxxxxxxxx",
+        "PYTHONUNBUFFERED": "1"
       }
     }
   }
@@ -508,6 +538,8 @@ Add this to your Claude Desktop config file:
 ```
 
 > **Important:** Use absolute paths — Claude Desktop launches the server in a clean environment and does not inherit your shell's PATH or load your `.env` file. All environment variables must be passed explicitly in the `env` block above.
+>
+> If you experience MCP connection timeouts, use a Python 3.11 virtual environment instead of 3.13/3.14. Create one with `python3.11 -m venv .venv311` and update the `command` path accordingly.
 
 Replace `/absolute/path/to/rag-pipeline` with your actual project path. Make sure Docker and LM Studio are running before opening Claude Desktop. Fully quit (`Cmd+Q`) and restart Claude Desktop after editing the config. You will see a hammer icon in the chat input — your pipeline tools are now available.
 
@@ -774,6 +806,14 @@ All settings live in `config.py` and are controlled via `.env`. You should never
 | `EMBEDDING_MODEL` | `mixedbread-ai/mxbai-embed-large-v1` | Embedding model for vector search |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder reranker |
 | `TAVILY_API_KEY` | — | Optional — web search (falls back to DuckDuckGo without it) |
+
+**Performance tuning**
+
+The pipeline's speed is primarily determined by your model's inference time. On a local 35B model expect 25-35 seconds per query. The main levers:
+
+- `MAX_QUERY_VARIANTS` in hardware tier config — reduce from 4 to 2 to halve retrieval time with minimal quality impact
+- `TOP_K_DENSE` / `TOP_K_SPARSE` — reduce from 20 to 10 for smaller knowledge bases (under 1,000 chunks)
+- Query cache — repeat queries return in under 0.1 seconds regardless of model size
 
 ---
 

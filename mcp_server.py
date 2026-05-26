@@ -1,10 +1,19 @@
-# mcp_server.py
 import sys
 import os
-from mcp.server.fastmcp import FastMCP  # instead of from fastmcp import FastMCP
-import pipeline
 
-sys.stdout = sys.stderr
+# FastMCP writes to sys.__stdout__ directly for protocol messages
+# We redirect sys.stdout (what print() uses) to sys.stderr
+# This keeps protocol clean while capturing all print() calls
+import builtins
+_original_print = builtins.print
+
+def _stderr_print(*args, **kwargs):
+    kwargs['file'] = sys.stderr
+    _original_print(*args, **kwargs)
+
+builtins.print = _stderr_print
+
+from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP(
     name="Local Agentic RAG Pipeline",
@@ -17,6 +26,16 @@ mcp = FastMCP(
     Use evaluate_pipeline to run the RAGAs evaluation suite.
     """
 )
+
+_pipeline = None
+
+def get_pipeline():
+    global _pipeline
+    if _pipeline is None:
+        import pipeline
+        _pipeline = pipeline
+    return _pipeline
+
 
 @mcp.tool()
 def query_knowledge_base(question: str) -> str:
@@ -36,16 +55,15 @@ def query_knowledge_base(question: str) -> str:
     or real-time information — it can access the live web.
     """
     try:
-        result = pipeline.query(question)
+        p = get_pipeline()
+        result = p.query(question)
         answer = result["answer"]
         sources = result.get("sources", [])
         route = result.get("route", "unknown")
-
         return f"""Answer: {answer}
 
 Route used: {route}
 Sources: {', '.join(sources) if sources else 'None'}"""
-
     except Exception as e:
         return f"Error running pipeline: {str(e)}"
 
@@ -59,7 +77,8 @@ def ingest_url(url: str) -> str:
     This is NOT for searching the web — use query_knowledge_base for that.
     """
     try:
-        result = pipeline.ingest(url)
+        p = get_pipeline()
+        result = p.ingest(url)
         return f"Successfully ingested {result['ingested']} chunks from {result['source']}"
     except Exception as e:
         return f"Error ingesting URL: {str(e)}"
@@ -68,11 +87,12 @@ def ingest_url(url: str) -> str:
 @mcp.tool()
 def ingest_file(path: str) -> str:
     """
-    Ingest a local file into the knowledge base.
+    Ingests a local file into the knowledge base.
     Supports .txt, .md, .pdf, and .docx files.
     """
     try:
-        result = pipeline.ingest(path)
+        p = get_pipeline()
+        result = p.ingest(path)
         return f"Successfully ingested {result['ingested']} chunks from {result['source']}"
     except Exception as e:
         return f"Error ingesting file: {str(e)}"
@@ -107,7 +127,6 @@ def get_sources(question: str) -> str:
                 f"    Score: {chunk.get('rerank_score', 0):.4f}\n"
                 f"    Preview: {chunk['content'][:200]}..."
             )
-
         return "\n\n".join(output)
 
     except Exception as e:

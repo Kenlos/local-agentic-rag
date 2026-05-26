@@ -18,28 +18,34 @@ WEB_KEYWORDS = [
 # Only used when we need to decide between single vs multi-tool.
 # Much simpler than asking the model to produce a full plan.
 
-MULTI_PART_PROMPT = """Does this question have TWO OR MORE distinct parts that need different information sources?
+MULTI_PART_PROMPT = """Does this question have TWO OR MORE completely distinct parts 
+that EACH require different information sources to answer properly?
 
-Examples of multi-part questions:
-- "What does Paul Graham say about work AND what are the latest AI tools?" → YES
-- "How does RAG reduce hallucinations?" → NO
-- "What is Python and what are the newest Python frameworks in 2026?" → YES
-- "What is a binary search tree?" → NO
+Only answer YES if both parts are substantial and genuinely need different sources.
+Simple questions with context do NOT count as multi-part.
+
+Examples of YES:
+- "What does Paul Graham say about work AND what are the latest AI tools in 2026?"
+- "Explain Docker and also what new Docker features were released this month?"
+
+Examples of NO:
+- "How does RAG reduce hallucinations?" (single topic)
+- "What is PostgreSQL and how does it work?" (single topic with elaboration)
+- "What are the latest AI developments?" (single topic needing web)
 
 Reply with only YES or NO.
 
 Question: {question}"""
 
-SUBQUERY_PROMPT = """A question has multiple parts that need different sources.
-Write specific search queries for each source.
+_multipart_cache: dict[str, bool] = {}
 
-Question: {question}
-KB relevance score: {kb_score:.4f} (above 0.60 means knowledge base has relevant content)
-
-Reply with ONLY this JSON and nothing else:
-{{"vector": "specific query for knowledge base", "web": "specific query for web search"}}
-
-JSON:"""
+def _is_multi_part(query: str) -> bool:
+    if query in _multipart_cache:
+        return _multipart_cache[query]
+    raw = _call_llm(MULTI_PART_PROMPT.format(question=query))
+    result = "yes" in raw.lower()
+    _multipart_cache[query] = result
+    return result
 
 
 def _kb_relevance_score(question: str) -> float:

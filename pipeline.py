@@ -16,6 +16,13 @@ from query_expansion import expand_query
 from generator import generate
 from router import plan
 
+import time
+
+def _timed(label: str, fn, *args, **kwargs):
+    start = time.time()
+    result = fn(*args, **kwargs)
+    print(f"[timing] {label}: {time.time()-start:.2f}s", file=__import__('sys').stderr)
+    return result
 
 # ─── Ingestion ────────────────────────────────────────────────────────────────
 
@@ -68,21 +75,15 @@ def _dynamic_threshold(chunk_count: int) -> float:
 
 
 def _rag_query(question: str) -> dict:
-    """
-    Full RAG retrieval pipeline.
-    Returns result with 'confident' flag so the caller knows
-    whether to trust this result or fall back.
-    """
-    # query expansion — multiple variants improve recall
-    queries = expand_query(question)
-
+    queries = _timed("query_expansion", expand_query, question)
+    
     all_dense, all_sparse = [], []
     for q in queries:
-        q_embedding = embed([q])[0]
-        all_dense.extend(dense_search(q_embedding))
-        all_sparse.extend(sparse_search(q))
+        q_embedding = _timed(f"embed '{q[:30]}'", embed, [q])
+        q_embedding = q_embedding[0]
+        all_dense.extend(_timed("dense_search", dense_search, q_embedding))
+        all_sparse.extend(_timed("sparse_search", sparse_search, q))
 
-    # deduplicate before fusion
     seen = set()
     dense_deduped, sparse_deduped = [], []
     for doc in all_dense:
@@ -94,10 +95,9 @@ def _rag_query(question: str) -> dict:
             sparse_deduped.append(doc)
             seen.add(doc["content"])
 
-    fused = reciprocal_rank_fusion(dense_deduped, sparse_deduped)
-    reranked = rerank(question, fused)
+    fused = _timed("rrf_fusion", reciprocal_rank_fusion, dense_deduped, sparse_deduped)
+    reranked = _timed("reranker", rerank, question, fused)
 
-    # dynamic confidence threshold
     if reranked:
         top_source = reranked[0]["source"]
         chunk_count = get_source_chunk_count(top_source)
@@ -107,10 +107,9 @@ def _rag_query(question: str) -> dict:
         threshold, top_score = 0.0, -999
 
     confident = top_score >= threshold
-    print(f"[pipeline] rerank score: {top_score:.4f} — {'confident ✓' if confident else 'low confidence ✗'}")
 
     if confident:
-        result = generate(question, reranked)
+        result = _timed("generation", generate, question, reranked)
     else:
         result = {"answer": "", "sources": []}
 
