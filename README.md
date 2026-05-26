@@ -1,30 +1,58 @@
 # Local Agentic RAG Pipeline + MCP Server
 
-A production-quality local RAG (Retrieval-Augmented Generation) pipeline that supercharges any local AI model with hybrid retrieval, intelligent routing, and an MCP server — callable from Claude Desktop, Cursor, or any MCP-compatible AI client.
+Production-quality RAG infrastructure for private data and local models. Query your own documents, databases, and live data sources with any local LLM — no cloud APIs, no data leaving your machine.
 
-**No cloud APIs required. No LangChain. No framework lock-in. Just plug in your local model and go.**
+**This is not a replacement for Claude or GPT-4. It is infrastructure for the use cases where those tools cannot help you.**
+
+---
+
+## Why does this exist?
+
+Cloud AI tools like Claude and ChatGPT are excellent for general questions. But they have hard limits that make them the wrong tool for specific situations:
+
+**Your data cannot leave your machine.**
+Companies with proprietary codebases, internal documents, customer records, or sensitive research cannot send that content to Anthropic or OpenAI's servers. This pipeline runs entirely locally — no data is transmitted anywhere.
+
+**Your data changes faster than any model's training cutoff.**
+Real estate listings, financial data, inventory systems, medical records, internal wikis — content that updates daily cannot be baked into a model's weights. This pipeline ingests fresh data on demand and keeps the knowledge base current.
+
+**You need to query across your own documents, not the internet.**
+When you need answers grounded in a specific set of documents — your company's policies, a research corpus, a client's data — a general-purpose AI that answers from training data is the wrong tool. This pipeline answers only from what you explicitly gave it.
+
+**You cannot afford cloud API costs at scale.**
+At thousands of queries per day against your own documents, a local model with this pipeline is dramatically cheaper than paying per token to a cloud API.
 
 ---
 
 ## What does this do?
 
-When you ask a question, most AI models answer purely from their training data. This pipeline gives your local model three superpowers:
+The pipeline gives any local model three capabilities it does not have on its own:
 
-1. **Knowledge base** — ingest any web page or document, and the model answers from that content instead of guessing
-2. **Live web search** — automatically searches the web for current information when the question needs it
-3. **Smart routing** — figures out the best source for each question without you telling it what to do
+1. **Private knowledge base** — ingest any document or web page, and the model answers from that content with citations
+2. **Live web search** — automatically fetches current information when the question needs it (news, prices, recent events)
+3. **Intelligent routing** — decides per query whether to search the KB, search the web, or answer from training knowledge — without you specifying
 
 ```
 You ask a question
         ↓
-Router decides: use my knowledge base, search the web, or answer directly?
+Router decides: KB, web search, or direct answer?
         ↓
 Retrieves the most relevant content
         ↓
-Model generates a grounded, cited answer
+Local model generates a grounded, cited answer
         ↓
-Good answers are cached — repeat questions return instantly
+Answer is cached — repeat questions return in under 0.1 seconds
 ```
+
+---
+
+## Who is this for?
+
+- **Developers at companies with data privacy requirements** — run production RAG on sensitive data without sending it to any external API
+- **Researchers** who need to query a private document corpus with a reproducible, offline local model
+- **Builders working with frequently-updated data** — real estate, finance, inventory, legal — where a static training cutoff is unacceptable
+- **Anyone building on local models** (LM Studio, Ollama, llama.cpp) who wants hybrid retrieval, reranking, and agentic routing without framework lock-in
+- **Engineers who want to expose their data as an MCP server** — callable from Claude Desktop, Cursor, or any MCP-compatible client without custom integration code
 
 ---
 
@@ -83,6 +111,21 @@ Switching from nomic (768d) to mxbai (1024d) on the same pipeline and KB:
 | Delta over naive | +27.5pp | +25.6pp | -1.9pp |
 
 Key finding: overall answer quality is nearly identical between models — the pipeline's hybrid retrieval, reranking, and routing do the heavy lifting regardless of embedding model. The meaningful difference is routing accuracy, where mxbai's higher-dimensional embeddings are significantly better at distinguishing questions genuinely covered by the KB from general knowledge questions.
+
+---
+
+### Run 4 — Model comparison: Qwen3 27B dense vs Qwen3 35B-A3B MoE (5 questions)
+
+Same KB, same embedding model (mxbai), same 5 questions. Only the generation model changed.
+
+| Metric | Qwen3 27B dense | Qwen3 35B-A3B MoE | Winner |
+|---|---|---|---|
+| Enhanced quality | 65.4% | 66.4% | 35B MoE (+1pp) |
+| Delta over naive | +25.6pp | +28.9pp | 35B MoE |
+| Avg query time | 468s | 104s | 35B MoE (4.5x faster) |
+| Routing accuracy | 80% | 80% | Tie |
+
+**Conclusion:** The 35B MoE is both faster and marginally better quality. The MoE architecture activates only ~3B parameters per token from a 35B pool — versus the 27B dense which activates all 27B parameters every token. On Apple Silicon with unified memory, the MoE architecture's lower active parameter count makes it dramatically faster with no meaningful quality penalty. **Recommended model: Qwen3 35B-A3B.**
 
 ---
 
@@ -201,7 +244,7 @@ THINKING_MODE=false
 # ── Embeddings ────────────────────────────────────────────────
 # These are the models used for search — not generation.
 # The defaults work well. Only change if you know what you are doing.
-EMBEDDING_MODEL=nomic-ai/nomic-embed-text-v1.5
+EMBEDDING_MODEL=mixedbread-ai/mxbai-embed-large-v1
 RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
 
 # ── Web Search ────────────────────────────────────────────────
@@ -254,6 +297,41 @@ If anything is wrong it tells you exactly what to fix. A successful run looks li
 ══════════════════════════════════════════════════
 ```
 
+### Step 7 — (Optional) Create a startup script
+
+If you use the MCP server regularly, a startup script saves you from manually starting Docker and the MCP server every time. A template is included in the repo:
+
+```bash
+cp start_mcp.sh.example start_mcp.sh
+chmod +x start_mcp.sh
+```
+
+Open `start_mcp.sh` and update the path to match your project directory, then edit the contents:
+
+```bash
+#!/bin/bash
+# start_mcp.sh — starts Docker, PostgreSQL, and the MCP server together
+cd /your/actual/path/to/rag-pipeline
+docker compose up -d postgres
+sleep 3
+source .venv/bin/activate
+python mcp_server.py
+```
+
+Run it any time you want the full stack started:
+
+```bash
+./start_mcp.sh
+```
+
+> `start_mcp.sh` is in `.gitignore` — it contains your local path and should not be committed. The `start_mcp.sh.example` template is committed and safe to share.
+
+If you are not using the MCP server, you can skip this step entirely and start Docker manually when needed:
+
+```bash
+docker compose up -d postgres
+```
+
 ---
 
 ## Troubleshooting setup
@@ -281,6 +359,41 @@ LM Studio is not running or the server has not been started. Open LM Studio, go 
 ### `GENERATION_MODEL` errors
 
 The model name in your `.env` does not exactly match what LM Studio shows. In LM Studio's Developer panel, look at the loaded model identifier and copy it character for character into `GENERATION_MODEL`.
+
+---
+
+## Apple Silicon — MLX models
+
+If you are running an MLX-format model in LM Studio on an M-series Mac, there are a few things worth knowing.
+
+**Recommended quantization**
+
+| Quantization | GPU offload | Speed | Quality | Recommendation |
+|---|---|---|---|---|
+| Q8 | Partial | Slowest | Highest | Only if quality is critical |
+| Q6 | Full | Fast | Very good | **Recommended** |
+| Q4 | Full | Fastest | Good | Use if memory is tight |
+
+Q6 is the sweet spot on Apple Silicon — it fits entirely in the Neural Engine/GPU memory (full offload) while preserving most of the model's quality. Q8's partial offload is actually slower than Q6's full offload on M-series chips because there is no PCIe bottleneck — unified memory means CPU and GPU share the same pool, but layers not offloaded to GPU still run slower.
+
+**MLX segfault / crash fix**
+
+If you see a segmentation fault or `Channel Error` in LM Studio logs, the most common cause is the model allocating too much KV cache upfront for a large context window. Fix it by capping the context window in LM Studio's model settings:
+
+1. In LM Studio, click the model settings gear icon
+2. Set **Context Length** to `32768`
+3. Reload the model
+
+32,768 tokens is more than enough for this pipeline's prompts and frees significant memory pressure. The default 128k or 262k context reservation causes crashes on machines under 64GB even when the model itself fits comfortably.
+
+**Model format comparison**
+
+| Format | Optimized for | Speed on Apple Silicon |
+|---|---|---|
+| GGUF | Cross-platform (llama.cpp) | Good |
+| MLX | Apple Silicon only | 20-40% faster than GGUF |
+
+MLX uses Apple's Neural Engine and GPU directly. For the same model at the same quantization, MLX will be meaningfully faster on M-series hardware.
 
 ---
 
@@ -348,16 +461,27 @@ MCP is an open standard created by Anthropic (now backed by OpenAI, Google, and 
 
 | Tool | What it does |
 |---|---|
-| `query_knowledge_base(question)` | Runs the full pipeline and returns a grounded answer |
-| `ingest_url(url)` | Scrapes a URL and adds it to the knowledge base |
+| `query_knowledge_base(question)` | Runs the full pipeline and returns a grounded answer. Also searches the live web for current information automatically. |
+| `ingest_url(url)` | Scrapes a URL and permanently adds it to the knowledge base |
 | `ingest_file(path)` | Ingests a local file into the knowledge base |
 | `get_sources(question)` | Returns raw retrieved chunks without generating an answer |
 | `evaluate_pipeline()` | Runs the RAGAs evaluation suite |
 
-### Start the server
+### Start the server manually
 
 ```bash
+# make sure Docker is running first
+docker compose up -d postgres
+
+# then start the MCP server
+source .venv/bin/activate
 python mcp_server.py
+```
+
+Or use the startup script if you created one in Step 7:
+
+```bash
+./start_mcp.sh
 ```
 
 ### Test with the MCP Inspector
@@ -378,17 +502,59 @@ Add this to your Claude Desktop config file:
 {
   "mcpServers": {
     "rag-pipeline": {
-      "command": "/path/to/rag-pipeline/.venv/bin/python",
-      "args": ["/path/to/rag-pipeline/mcp_server.py"],
+      "command": "/absolute/path/to/rag-pipeline/.venv/bin/python",
+      "args": ["/absolute/path/to/rag-pipeline/mcp_server.py"],
       "env": {
-        "DB_ENV": "local"
+        "DB_ENV": "local",
+        "LOCAL_DB_URL": "postgresql://rag_user:rag_password@localhost:5432/rag_db",
+        "LM_STUDIO_BASE_URL": "http://localhost:1234/v1",
+        "GENERATION_MODEL": "your-exact-model-name-here",
+        "EMBEDDING_MODEL": "mixedbread-ai/mxbai-embed-large-v1",
+        "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "HARDWARE_TIER": "large",
+        "THINKING_MODE": "false",
+        "TAVILY_API_KEY": "tvly-xxxxxxxxxx"
       }
     }
   }
 }
 ```
 
-Replace `/path/to/rag-pipeline` with your actual project path. Fully quit and restart Claude Desktop. You will see a hammer icon in the chat input — your pipeline tools are now available.
+> **Important:** Use absolute paths — Claude Desktop launches the server in a clean environment and does not inherit your shell's PATH or load your `.env` file. All environment variables must be passed explicitly in the `env` block above.
+
+Replace `/absolute/path/to/rag-pipeline` with your actual project path. Make sure Docker and LM Studio are running before opening Claude Desktop. Fully quit (`Cmd+Q`) and restart Claude Desktop after editing the config. You will see a hammer icon in the chat input — your pipeline tools are now available.
+
+### Connect to Claude Code
+
+Add your server to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "rag-pipeline": {
+      "command": "/absolute/path/to/rag-pipeline/.venv/bin/python",
+      "args": ["/absolute/path/to/rag-pipeline/mcp_server.py"],
+      "env": {
+        "DB_ENV": "local",
+        "LOCAL_DB_URL": "postgresql://rag_user:rag_password@localhost:5432/rag_db",
+        "LM_STUDIO_BASE_URL": "http://localhost:1234/v1",
+        "GENERATION_MODEL": "your-exact-model-name-here",
+        "EMBEDDING_MODEL": "mixedbread-ai/mxbai-embed-large-v1",
+        "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "HARDWARE_TIER": "large",
+        "THINKING_MODE": "false",
+        "TAVILY_API_KEY": "tvly-xxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+Verify it connected:
+
+```bash
+claude mcp list
+```
 
 ---
 
@@ -485,7 +651,7 @@ The model rewrites the question in multiple ways. "How does RAG work?" becomes t
 
 **2 — Dense retrieval**
 
-Each query variant is converted to a vector using `nomic-embed-text-v1.5` and compared against all stored chunks using cosine similarity in pgvector. This finds semantically similar content even when the exact words do not match.
+Each query variant is converted to a vector using `mxbai-embed-large-v1` and compared against all stored chunks using cosine similarity in pgvector. This finds semantically similar content even when the exact words do not match.
 
 **3 — Sparse retrieval (BM25)**
 
@@ -579,6 +745,7 @@ rag_pipeline/
 ├── docker-compose.yml       # PostgreSQL service — one command setup
 ├── init.sql                 # Database schema — runs automatically on first start
 ├── setup.py                 # Setup validator — checks everything before you code
+├── start_mcp.sh.example     # Template for optional MCP startup script
 ├── config.py                # All settings — controlled via .env
 ├── pipeline.py              # Main entry point — wires everything together
 ├── router.py                # Agentic router — tiered routing with multi-tool planning
@@ -617,7 +784,7 @@ All settings live in `config.py` and are controlled via `.env`. You should never
 | `LM_STUDIO_BASE_URL` | `http://localhost:1234/v1` | LM Studio server URL |
 | `GENERATION_MODEL` | — | Exact model name as shown in LM Studio |
 | `THINKING_MODE` | `false` | Enable extended reasoning (slower but deeper) |
-| `EMBEDDING_MODEL` | `nomic-ai/nomic-embed-text-v1.5` | Embedding model for vector search |
+| `EMBEDDING_MODEL` | `mixedbread-ai/mxbai-embed-large-v1` | Embedding model for vector search |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder reranker |
 | `TAVILY_API_KEY` | — | Optional — web search (falls back to DuckDuckGo without it) |
 
@@ -638,12 +805,14 @@ Any server that exposes an OpenAI-compatible `/v1/chat/completions` endpoint wil
 
 **Tested models:**
 
-| Model | Size | Tier | Notes |
-|---|---|---|---|
-| Qwen3 35B-A3B | 35B MoE | large | Recommended — strong reasoning, fast MoE inference |
-| Qwen3 8B | 8B | small/medium | Good quality, fast |
-| Llama 3.1 8B | 8B | small | Solid baseline |
-| Mistral 7B | 7B | small | Fast, good for low-RAM setups |
+| Model | Format | Size | Tier | Notes |
+|---|---|---|---|---|
+| Qwen3 35B-A3B | MLX Q6 | 35B MoE | large | Recommended — best speed/quality on Apple Silicon |
+| Qwen3 35B-A3B | GGUF | 35B MoE | large | Cross-platform alternative |
+| Qwen3 27B | GGUF | 27B dense | large | 4.5x slower than 35B MoE, similar quality |
+| Qwen3 8B | GGUF / MLX | 8B | small/medium | Good quality, fast |
+| Llama 3.1 8B | GGUF | 8B | small | Solid baseline |
+| Mistral 7B | GGUF | 7B | small | Fast, good for low-RAM setups |
 
 ---
 
