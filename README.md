@@ -364,17 +364,13 @@ The model name in your `.env` does not exactly match what LM Studio shows. In LM
 
 ## Apple Silicon — MLX models
 
-If you are running an MLX-format model in LM Studio on an M-series Mac, there are a few things worth knowing.
+MLX is Apple's ML framework built specifically for M-series chips. For the same model at the same quantization, MLX will generally be faster than GGUF on Apple Silicon because it uses the Neural Engine and GPU directly rather than going through llama.cpp's cross-platform runtime.
 
-**Recommended quantization**
+**Choosing a quantization level**
 
-| Quantization | GPU offload | Speed | Quality | Recommendation |
-|---|---|---|---|---|
-| Q8 | Partial | Slowest | Highest | Only if quality is critical |
-| Q6 | Full | Fast | Very good | **Recommended** |
-| Q4 | Full | Fastest | Good | Use if memory is tight |
+Higher quantization (Q8) preserves more model quality but uses more memory, which may prevent full GPU offload on machines with less unified memory. Lower quantization (Q4) uses less memory and enables full GPU offload but with some quality loss. Full GPU offload is generally faster than partial offload regardless of quantization level.
 
-Q6 is the sweet spot on Apple Silicon — it fits entirely in the Neural Engine/GPU memory (full offload) while preserving most of the model's quality. Q8's partial offload is actually slower than Q6's full offload on M-series chips because there is no PCIe bottleneck — unified memory means CPU and GPU share the same pool, but layers not offloaded to GPU still run slower.
+The right quantization for your machine depends on how much unified memory you have and which model size you are running. A good rule of thumb: choose the highest quantization level that still fits entirely in memory with room left for the OS, the embedding model, and the reranker.
 
 **MLX segfault / crash fix**
 
@@ -384,16 +380,7 @@ If you see a segmentation fault or `Channel Error` in LM Studio logs, the most c
 2. Set **Context Length** to `32768`
 3. Reload the model
 
-32,768 tokens is more than enough for this pipeline's prompts and frees significant memory pressure. The default 128k or 262k context reservation causes crashes on machines under 64GB even when the model itself fits comfortably.
-
-**Model format comparison**
-
-| Format | Optimized for | Speed on Apple Silicon |
-|---|---|---|
-| GGUF | Cross-platform (llama.cpp) | Good |
-| MLX | Apple Silicon only | 20-40% faster than GGUF |
-
-MLX uses Apple's Neural Engine and GPU directly. For the same model at the same quantization, MLX will be meaningfully faster on M-series hardware.
+32,768 tokens is more than enough for this pipeline's prompts and frees significant memory pressure. The default 128k or 262k context reservation can cause crashes even when the model weights themselves fit comfortably in memory.
 
 ---
 
